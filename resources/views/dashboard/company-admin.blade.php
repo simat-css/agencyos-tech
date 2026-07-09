@@ -1,17 +1,17 @@
 @extends('layouts.admin')
 
-@section('title','Dashboard')
+@section('title', 'Company Dashboard')
 
 @section('content')
 
 <div class="mb-4">
 
     <h1 class="dashboard-title">
-        Dashboard
+        Company Dashboard
     </h1>
 
     <p class="dashboard-subtitle">
-        Welcome back, Super Admin.
+        Welcome back, Company Admin.
     </p>
 
 </div>
@@ -19,35 +19,29 @@
 <div class="row g-4">
 
     <div class="col-lg-3">
-
         <div class="card stat-card">
-
             <div class="card-body d-flex justify-content-between">
 
                 <div>
-                    <small>Total Companies</small>
-                    <h2>{{ $stats['companies'] }}</h2>
+                    <small>Total Employees</small>
+                    <h2>156</h2>
                 </div>
 
                 <div class="stat-icon icon-primary">
-                    <i class="fas fa-building"></i>
+                    <i class="fas fa-users"></i>
                 </div>
 
             </div>
-
         </div>
-
     </div>
 
     <div class="col-lg-3">
-
         <div class="card stat-card">
-
             <div class="card-body d-flex justify-content-between">
 
                 <div>
                     <small>Departments</small>
-                    <h2>{{ $stats['departments'] }}</h2>
+                    <h2>8</h2>
                 </div>
 
                 <div class="stat-icon icon-success">
@@ -55,36 +49,11 @@
                 </div>
 
             </div>
-
         </div>
-
     </div>
 
     <div class="col-lg-3">
-
         <div class="card stat-card">
-
-            <div class="card-body d-flex justify-content-between">
-
-                <div>
-                    <small>Users</small>
-                    <h2>{{ $stats['users'] }}</h2>
-                </div>
-
-                <div class="stat-icon icon-warning">
-                    <i class="fas fa-users"></i>
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="col-lg-3">
-
-        <div class="card stat-card">
-
             <div class="card-body d-flex justify-content-between">
 
                 <div>
@@ -92,18 +61,32 @@
                     <h2>24</h2>
                 </div>
 
-                <div class="stat-icon icon-danger">
+                <div class="stat-icon icon-warning">
                     <i class="fas fa-briefcase"></i>
                 </div>
 
             </div>
-
         </div>
+    </div>
 
+    <div class="col-lg-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex justify-content-between">
+
+                <div>
+                    <small>Clients</small>
+                    <h2>18</h2>
+                </div>
+
+                <div class="stat-icon icon-danger">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+
+            </div>
+        </div>
     </div>
 
 </div>
-
 <div class="row mt-4">
 
     <div class="col-lg-8">
@@ -113,16 +96,13 @@
             <div class="card-header bg-white border-0">
                 <h5 class="mb-0">
                     <i class="fas fa-chart-line me-2"></i>
-                    Overview
+                    Employee Growth
                 </h5>
             </div>
 
             <div class="card-body">
 
-                <div
-                    id="overviewChart"
-                    style="height:350px;">
-                </div>
+                <div id="employeeGrowthChart" style="height:350px;"></div>
 
             </div>
 
@@ -136,16 +116,13 @@
 
             <div class="card-header bg-white border-0">
                 <h5 class="mb-0">
-                    System Statistics
+                    Employees By Department
                 </h5>
             </div>
 
             <div class="card-body">
 
-                <div
-                    id="roleChart"
-                    style="height:350px;">
-                </div>
+                <div id="departmentChart" style="height:350px;"></div>
 
             </div>
 
@@ -154,8 +131,6 @@
     </div>
 
 </div>
-
-
 <div class="row mt-4">
 
     <div class="col-lg-6">
@@ -170,22 +145,22 @@
 
                 <div class="activity-item mb-3">
                     <i class="fas fa-user-plus text-success me-2"></i>
-                    New User Created
+                    New employee added
                 </div>
 
                 <div class="activity-item mb-3">
-                    <i class="fas fa-building text-primary me-2"></i>
-                    Company Added
+                    <i class="fas fa-sitemap text-primary me-2"></i>
+                    Department updated
                 </div>
 
                 <div class="activity-item mb-3">
-                    <i class="fas fa-user-edit text-warning me-2"></i>
-                    User Updated
+                    <i class="fas fa-briefcase text-warning me-2"></i>
+                    New project assigned
                 </div>
 
                 <div class="activity-item">
-                    <i class="fas fa-trash text-danger me-2"></i>
-                    Company Deleted
+                    <i class="fas fa-user-edit text-info me-2"></i>
+                    Employee profile updated
                 </div>
 
             </div>
@@ -205,19 +180,19 @@
             <div class="card-body">
 
                 <div class="mb-3">
-                    New company registered
-                </div>
-
-                <div class="mb-3">
-                    New user created
+                    New employee joined today
                 </div>
 
                 <div class="mb-3">
                     Project deadline approaching
                 </div>
 
+                <div class="mb-3">
+                    Department meeting scheduled
+                </div>
+
                 <div>
-                    Invoice payment received
+                    Monthly report ready
                 </div>
 
             </div>
@@ -229,176 +204,61 @@
 </div>
 
 @endsection
-
 @push('scripts')
 
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
 
-
-    // =========================
-    // Overview Area Chart
-    // =========================
-
-    let overviewElement = document.querySelector("#overviewChart");
-
-
-    if (overviewElement) {
-
-
-        let overviewOptions = {
-
+    let growthChart = new ApexCharts(
+        document.querySelector("#employeeGrowthChart"),
+        {
             chart: {
                 type: 'area',
                 height: 350,
-                toolbar: {
-                    show: false
-                }
+                toolbar: { show: false }
             },
-
-
-            series: [
-                {
-                    name: 'Companies',
-
-                    data: @json(array_values($companyData ?? []))
-                }
-            ],
-
-
+            series: [{
+                name: 'Employees',
+                data: [20, 35, 45, 55, 75, 90, 120]
+            }],
             xaxis: {
-
-                categories: @json(array_keys($companyData ?? []))
-
+                categories: ['Jan','Feb','Mar','Apr','May','Jun','Jul']
             },
-
-
-            colors: ['#2563eb'],
-
-
+            colors: ['#2563EB'],
             stroke: {
-
                 curve: 'smooth',
-
                 width: 3
-
-            },
-
-
-            dataLabels: {
-
-                enabled: false
-
-            },
-
-
-            fill: {
-
-                type: 'gradient',
-
-                gradient: {
-
-                    shadeIntensity: 1,
-
-                    opacityFrom: 0.4,
-
-                    opacityTo: 0.1
-
-                }
-
-            },
-
-
-            grid: {
-
-                borderColor: '#e5e7eb'
-
-            },
-
-
-            tooltip: {
-
-                y: {
-
-                    formatter: function(value){
-
-                        return value + " Companies";
-
-                    }
-
-                }
-
-            }
-
-        };
-
-
-        let overviewChart = new ApexCharts(
-            overviewElement,
-            overviewOptions
-        );
-
-
-        overviewChart.render();
-
-    }
-
-
-
-    // =========================
-    // Users Role Donut Chart
-    // =========================
-
-
-let roleElement = document.querySelector("#roleChart");
-
-let roleOptions = {
-
-    chart: {
-        type: 'donut',
-        height: 350
-    },
-
-    series: @json(array_values($roleData->toArray())),
-
-    labels: @json(array_keys($roleData->toArray())),
-
-    colors: [
-        '#3b82f6',
-        '#f59e0b',
-        '#22c55e',
-        '#ef4444'
-    ],
-
-    legend: {
-        position: 'bottom'
-    },
-
-    plotOptions: {
-        pie: {
-            donut: {
-                size: '65%'
             }
         }
-    },
-
-    dataLabels: {
-        enabled: true
-    }
-};
-
-if (roleElement) {
-
-    let roleChart = new ApexCharts(
-        roleElement,
-        roleOptions
     );
 
-    roleChart.render();
-}
+    growthChart.render();
 
+    let departmentChart = new ApexCharts(
+        document.querySelector("#departmentChart"),
+        {
+            chart: {
+                type: 'donut',
+                height: 350
+            },
+            series: [40, 25, 15, 20],
+            labels: [
+                'Development',
+                'HR',
+                'Sales',
+                'Marketing'
+            ],
+            colors: [
+                '#2563EB',
+                '#22C55E',
+                '#F59E0B',
+                '#EF4444'
+            ]
+        }
+    );
 
+    departmentChart.render();
 
 });
 

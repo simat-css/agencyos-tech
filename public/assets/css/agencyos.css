@@ -455,6 +455,36 @@ body{
     border-radius:10px;
     background:#f8fafc;
 }
+.search-wrapper{
+
+    position:relative;
+    width:350px;
+
+}
+.search-result{
+
+    position:absolute;
+    top:45px;
+    left:0;
+    width:100%;
+    background:#fff;
+    border-radius:8px;
+    z-index:9999;
+    display:none;
+
+}
+.search-result .result-item{
+
+    padding:10px;
+    border-bottom:1px solid #eee;
+    cursor:pointer;
+
+}
+.search-result .result-item:hover{
+
+    background:#f5f5f5;
+
+}
 /* Mobile */
 
 @media(max-width:991px){

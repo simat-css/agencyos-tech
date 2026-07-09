@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use App\Models\Role;
 
 class RoleSeeder extends Seeder
 {
@@ -12,112 +12,258 @@ class RoleSeeder extends Seeder
     {
         /*
         |--------------------------------------------------------------------------
-        | Create Roles
+        | System Roles
         |--------------------------------------------------------------------------
         */
 
-        $superAdmin = Role::firstOrCreate([
-            'name' => 'Super Admin',
-            'guard_name' => 'web',
-        ]);
+        $roles = [
 
-        $companyAdmin = Role::firstOrCreate([
-            'name' => 'Company Admin',
-            'guard_name' => 'web',
-        ]);
+            'Super Admin',
+            'Company Admin',
+            'Manager',
+            'Sales Executive',
+            'HR',
+            'Developer',
+            'Designer',
+            'SEO Executive',
+            'Accounts',
+            'Support Executive',
+            'Client',
+            'Employee',
 
-        $manager = Role::firstOrCreate([
-            'name' => 'Manager',
-            'guard_name' => 'web',
-        ]);
+        ];
 
-        $hr = Role::firstOrCreate([
-            'name' => 'HR',
-            'guard_name' => 'web',
-        ]);
+        foreach ($roles as $role) {
 
-        $developer = Role::firstOrCreate([
-            'name' => 'Developer',
-            'guard_name' => 'web',
-        ]);
+            Role::firstOrCreate(
 
-        $designer = Role::firstOrCreate([
-            'name' => 'Designer',
-            'guard_name' => 'web',
-        ]);
+                [
+                    'name' => $role,
+                ],
 
-        $sales = Role::firstOrCreate([
-            'name' => 'Sales',
-            'guard_name' => 'web',
-        ]);
+                [
+                    'guard_name' => 'web',
+                    'company_id' => null,
+                    'is_system'  => true,
+                ]
 
-        $accounts = Role::firstOrCreate([
-            'name' => 'Accounts',
-            'guard_name' => 'web',
-        ]);
+            );
 
-        $support = Role::firstOrCreate([
-            'name' => 'Support',
-            'guard_name' => 'web',
-        ]);
+        }
 
         /*
         |--------------------------------------------------------------------------
-        | Assign Permissions
+        | Super Admin
         |--------------------------------------------------------------------------
         */
 
-        // Super Admin
-        $superAdmin->syncPermissions(
-            Permission::all()
-        );
+        Role::findByName('Super Admin')
+            ->syncPermissions(
+                Permission::all()
+            );
 
-        // Company Admin
-        $companyAdmin->syncPermissions([
-            'companies.view',
-            'companies.edit',
+        /*
+        |--------------------------------------------------------------------------
+        | Company Admin
+        |--------------------------------------------------------------------------
+        */
 
-            'departments.view',
-            'departments.create',
-            'departments.edit',
-            'departments.delete',
+        Role::findByName('Company Admin')
+            ->syncPermissions([
 
-            'users.view',
-            'users.create',
-            'users.edit',
-            'users.delete',
-        ]);
+                'companies.view',
+                'companies.create',
+                'companies.edit',
+                'companies.delete',
 
-        // Manager
-        $manager->syncPermissions([
-            'departments.view',
-            'users.view',
-        ]);
+                'departments.view',
+                'departments.create',
+                'departments.edit',
+                'departments.delete',
 
-        // HR
-        $hr->syncPermissions([
-            'users.view',
-            'users.create',
-            'users.edit',
-        ]);
+                'roles.view',
+                'roles.create',
+                'roles.edit',
+                'roles.delete',
 
-        // Developer
-        $developer->syncPermissions([
-            'departments.view',
-        ]);
+                'users.view',
+                'users.create',
+                'users.edit',
+                'users.delete',
 
-        // Designer
-        $designer->syncPermissions([
-            'departments.view',
-        ]);
+                'users.activate',
+                'users.deactivate',
 
-        // Sales
-        $sales->syncPermissions([]);
+                'users.assign_role',
+                'users.assign_permission',
 
-        // Accounts
-        $accounts->syncPermissions([]);
+                'activity_logs.view',
 
-        // Support
-        $support->syncPermissions([]);
+                'notifications.view',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Manager
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Manager')
+            ->syncPermissions([
+
+                'departments.view',
+
+                'users.view',
+
+                'users.profile.view',
+
+                'projects.view',
+                'projects.create',
+                'projects.edit',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | HR
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('HR')
+            ->syncPermissions([
+
+                'users.view',
+                'users.create',
+                'users.edit',
+
+                'users.activate',
+                'users.deactivate',
+
+                'users.profile.view',
+                'users.profile.edit',
+
+                'login_history.view',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Developer
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Developer')
+            ->syncPermissions([
+
+                'departments.view',
+
+                'projects.view',
+                'projects.create',
+                'projects.edit',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Employee
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Employee')
+            ->syncPermissions([
+
+                'departments.view',
+
+                'users.profile.view',
+                'users.profile.edit',
+
+                'projects.view',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Designer
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Designer')
+            ->syncPermissions([
+
+                'projects.view',
+                'projects.edit',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sales Executive
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Sales Executive')
+            ->syncPermissions([
+
+                'clients.view',
+                'clients.create',
+                'clients.edit',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | SEO Executive
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('SEO Executive')
+            ->syncPermissions([
+
+                'projects.view',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Accounts
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Accounts')
+            ->syncPermissions([
+
+                'invoices.view',
+                'invoices.create',
+                'invoices.edit',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Support Executive
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Support Executive')
+            ->syncPermissions([
+
+                'clients.view',
+                'projects.view',
+
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Client
+        |--------------------------------------------------------------------------
+        */
+
+        Role::findByName('Client')
+            ->syncPermissions([
+
+                'projects.view',
+
+            ]);
     }
 }

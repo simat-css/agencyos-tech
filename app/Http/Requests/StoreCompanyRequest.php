@@ -28,16 +28,16 @@ class StoreCompanyRequest extends FormRequest
             ],
 
             'email' => [
-                'nullable',
-                'email',
-                'unique:companies,email',
-            ],
+            'required',
+            'email',
+            'unique:companies,email',
+           ],
 
             'phone' => [
-                'nullable',
-                'string',
-                'max:20',
-            ],
+            'required',
+            'string',
+            'max:20',
+           ],
 
             'website' => [
                 'nullable',
@@ -53,8 +53,8 @@ class StoreCompanyRequest extends FormRequest
             ],
 
             'address' => [
-                'nullable',
-                'string',
+            'required',
+            'string',
             ],
 
             'status' => [
@@ -83,6 +83,9 @@ class StoreCompanyRequest extends FormRequest
             'logo.image' => 'Logo must be an image.',
 
             'logo.max' => 'Logo size must not exceed 2MB.',
+            'email.required' => 'Company email is required.',
+            'phone.required' => 'Company phone is required.',
+            'address.required' => 'Company address is required.',
 
         ];
     }

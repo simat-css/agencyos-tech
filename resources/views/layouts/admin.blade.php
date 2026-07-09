@@ -11,11 +11,8 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 
 <link rel="stylesheet" href="{{ asset('assets/plugins/fontawesome/css/all.min.css') }}">
-    <link rel="stylesheet"
-          href="{{ asset('adminlte/dist/css/adminlte.css') }}">
-
-    <link rel="stylesheet"
-          href="{{ asset('assets/css/agencyos.css') }}">
+    <link rel="stylesheet" href="{{ asset('adminlte/dist/css/adminlte.css') }}">
+<link rel="stylesheet"  href="{{ asset('assets/css/agencyos.css') }}">
 </head>
 
 <body>
@@ -46,8 +43,9 @@
 
 <script src="{{ asset('adminlte/dist/js/adminlte.js') }}"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('assets/js/apexcharts.min.js') }}"></script>
+
+<script src="{{ asset('assets/js/sweetalert2.all.min.js') }}"></script>
 
 @stack('scripts')
 

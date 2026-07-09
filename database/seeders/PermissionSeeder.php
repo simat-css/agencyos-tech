@@ -11,35 +11,136 @@ class PermissionSeeder extends Seeder
     {
         $permissions = [
 
+            /*
+            |--------------------------------------------------------------------------
+            | Company Management
+            |--------------------------------------------------------------------------
+            */
+
             'companies.view',
             'companies.create',
             'companies.edit',
             'companies.delete',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Department Management
+            |--------------------------------------------------------------------------
+            */
 
             'departments.view',
             'departments.create',
             'departments.edit',
             'departments.delete',
 
+            /*
+            |--------------------------------------------------------------------------
+            | Role Management
+            |--------------------------------------------------------------------------
+            */
+
             'roles.view',
             'roles.create',
             'roles.edit',
             'roles.delete',
+
+            /*
+            |--------------------------------------------------------------------------
+            | User Management
+            |--------------------------------------------------------------------------
+            */
 
             'users.view',
             'users.create',
             'users.edit',
             'users.delete',
 
+            'users.activate',
+            'users.deactivate',
+
+            'users.assign_role',
+            'users.assign_permission',
+
+            'users.profile.view',
+            'users.profile.edit',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Login History & Security
+            |--------------------------------------------------------------------------
+            */
+
+            'login_history.view',
+            'device_tracking.view',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Client Management
+            |--------------------------------------------------------------------------
+            */
+
+            'clients.view',
+            'clients.create',
+            'clients.edit',
+            'clients.delete',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Project Management
+            |--------------------------------------------------------------------------
+            */
+
+            'projects.view',
+            'projects.create',
+            'projects.edit',
+            'projects.delete',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Invoice Management
+            |--------------------------------------------------------------------------
+            */
+
+            'invoices.view',
+            'invoices.create',
+            'invoices.edit',
+            'invoices.delete',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Activity Logs
+            |--------------------------------------------------------------------------
+            */
+
+            'activity_logs.view',
+            'activity_logs.export',
+
+            /*
+            |--------------------------------------------------------------------------
+            | Notifications
+            |--------------------------------------------------------------------------
+            */
+
+            'notifications.view',
+            'notifications.create',
+            'notifications.delete',
+
+            /*
+            |--------------------------------------------------------------------------
+            | AI Action Engine
+            |--------------------------------------------------------------------------
+            */
+
+            'ai.commands.view',
+            'ai.commands.execute',
         ];
 
         foreach ($permissions as $permission) {
 
             Permission::firstOrCreate([
-                'name' => $permission,
+                'name'       => $permission,
                 'guard_name' => 'web',
             ]);
-
         }
     }
 }

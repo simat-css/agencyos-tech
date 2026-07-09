@@ -34,10 +34,16 @@ class DashboardController extends Controller
 ];
 
 
-        $roleData = collect([
-    'Users' => User::count(),
-    'Companies' => Company::count(),
-    'Departments' => Department::count(),
+$roleData = collect([
+    'Users'              => User::count(),
+    'Departments'        => Department::count(),
+    'Active Companies'   => Company::where('status', 1)->count(),
+    'Inactive Companies' => Company::where('status', 0)->count(),
+]);
+
+$companyStatusData = collect([
+    'Active Companies'   => Company::where('status', 1)->count(),
+    'Inactive Companies' => Company::where('status', 0)->count(),
 ]);
 
 
@@ -53,6 +59,7 @@ class DashboardController extends Controller
             'stats',
             'companyData',
             'roleData',
+            'companyStatusData',
             'activities'
         ));
     }

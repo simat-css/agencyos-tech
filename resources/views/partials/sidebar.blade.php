@@ -110,10 +110,46 @@
 
 </div>
 
-        <a href="#">
+        <!-- Roles Dropdown -->
+
+<div class="sidebar-dropdown">
+
+    <a href="#roleMenu"
+       class="sidebar-link"
+       data-bs-toggle="collapse"
+       aria-expanded="{{ request()->routeIs('roles.*') ? 'true' : 'false' }}">
+
+        <span>
             <i class="fas fa-user-shield me-2"></i>
             Roles
+        </span>
+
+        <i class="fas fa-angle-down"></i>
+
+    </a>
+
+    <div class="collapse {{ request()->routeIs('roles.*') ? 'show' : '' }}"
+         id="roleMenu">
+
+        <a href="{{ route('roles.index') }}"
+           class="sidebar-sub-link {{ request()->routeIs('roles.index') ? 'active' : '' }}">
+
+            <i class="fas fa-list me-2"></i>
+            Role List
+
         </a>
+
+        <a href="{{ route('roles.create') }}"
+           class="sidebar-sub-link {{ request()->routeIs('roles.create') ? 'active' : '' }}">
+
+            <i class="fas fa-plus me-2"></i>
+            Add Role
+
+        </a>
+
+    </div>
+
+</div>
 
         <a href="#">
             <i class="fas fa-lock me-2"></i>
