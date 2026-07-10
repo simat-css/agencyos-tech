@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Services\CompanyService;
 use function activity;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class CompanyController extends Controller
 {
@@ -40,7 +41,13 @@ class CompanyController extends Controller
    public function index()
 {
     $query = Company::query();
-
+    if(auth()->user()->hasRole('Company Admin'))
+    {
+        $query->where(
+            'id',
+            auth()->user()->company_id
+        );
+    }
     if (request('search')) {
 
         $query->where(function ($q) {
@@ -169,5 +176,56 @@ public function toggleStatus(Company $company)
             'success',
             'Company status updated successfully.'
         );
+}
+
+public function bulkAction(Request $request)
+{
+    $request->validate([
+        'action' => 'required|in:activate,deactivate,delete',
+        'ids'    => 'required|array|min:1'
+    ]);
+
+    switch ($request->action) {
+
+        case 'activate':
+
+    $updated = Company::whereIn('id', $request->ids)
+        ->where('status', 0)
+        ->update(['status' => 1]);
+
+    if ($updated == 0) {
+        return response()->json([
+            'message' => 'Selected companies are already active.'
+        ], 422);
+    }
+
+    break;
+
+        case 'deactivate':
+
+    $updated = Company::whereIn('id', $request->ids)
+        ->where('status', 1)
+        ->update(['status' => 0]);
+
+    if ($updated == 0) {
+        return response()->json([
+            'message' => 'Selected companies are already inactive.'
+        ], 422);
+    }
+
+    break;
+
+        case 'delete':
+
+            Company::whereIn('id', $request->ids)
+                ->delete();
+
+            break;
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Action completed successfully.'
+    ]);
 }
 }

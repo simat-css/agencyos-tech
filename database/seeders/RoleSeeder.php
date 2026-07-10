@@ -69,40 +69,42 @@ class RoleSeeder extends Seeder
         */
 
         Role::findByName('Company Admin')
-            ->syncPermissions([
+    ->syncPermissions([
 
-                'companies.view',
-                'companies.create',
-                'companies.edit',
-                'companies.delete',
+        'companies.view',
+        'companies.create',
+        'companies.edit',
+        'companies.delete',
 
-                'departments.view',
-                'departments.create',
-                'departments.edit',
-                'departments.delete',
+        'departments.view',
+        'departments.create',
+        'departments.edit',
+        'departments.delete',
 
-                'roles.view',
-                'roles.create',
-                'roles.edit',
-                'roles.delete',
+        'roles.view',
+        'roles.create',
+        'roles.edit',
+        'roles.delete',
 
-                'users.view',
-                'users.create',
-                'users.edit',
-                'users.delete',
+        'users.view',
+        'users.create',
+        'users.edit',
+        'users.delete',
 
-                'users.activate',
-                'users.deactivate',
+        'users.activate',
+        'users.deactivate',
 
-                'users.assign_role',
-                'users.assign_permission',
+        'users.import',
+        'users.export',
 
-                'activity_logs.view',
+        'users.assign_role',
+        'users.assign_permission',
 
-                'notifications.view',
+        'activity_logs.view',
 
-            ]);
+        'notifications.view',
 
+    ]);
         /*
         |--------------------------------------------------------------------------
         | Manager

@@ -20,14 +20,17 @@
             </small>
         </div>
 
-        <a href="{{ route('companies.create') }}"
-           class="btn btn-primary">
+        @role('Super Admin')
 
-            <i class="fas fa-plus-circle me-1"></i>
+<a href="{{ route('companies.create') }}"
+   class="btn btn-primary">
 
-            Add Company
+    <i class="fas fa-plus-circle me-1"></i>
+    Add Company
 
-        </a>
+</a>
+
+@endrole
 
     </div>
 
@@ -146,7 +149,7 @@
     </div>
 
 </div>
-
+@role('Super Admin')
     {{-- Search Card --}}
     <div class="card mb-4">
     <div class="card-body">
@@ -193,6 +196,63 @@
 
     </div>
 </div>
+@endrole
+
+@if(auth()->user()->hasRole('Super Admin') && $companies->count() > 0)
+
+<div class="card mb-3 border-0 shadow-sm">
+
+    <div class="card-body">
+
+        <div class="d-flex align-items-center justify-content-between">
+
+            <div>
+
+                <h6 class="mb-0 fw-semibold">
+                    Bulk Actions
+                </h6>
+
+                <small class="text-muted">
+                    Apply actions on selected companies
+                </small>
+
+            </div>
+
+            <div class="btn-group">
+
+                <button id="bulk-activate"
+                        class="btn btn-outline-success">
+
+                    <i class="fas fa-check-circle me-1"></i>
+                    Activate
+
+                </button>
+
+                <button id="bulk-deactivate"
+                        class="btn btn-outline-warning">
+
+                    <i class="fas fa-ban me-1"></i>
+                    Deactivate
+
+                </button>
+
+                <button id="bulk-delete"
+                        class="btn btn-outline-danger">
+
+                    <i class="fas fa-trash me-1"></i>
+                    Delete
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@endif
 
     {{-- Companies Table --}}
     <div class="card">
@@ -204,7 +264,9 @@
                 <thead class="table-light">
 
                     <tr>
-
+                        <th width="50">
+    <input type="checkbox" id="select-all-companies">
+</th>
                         <th width="70">Logo</th>
 
                         <th>ID</th>
@@ -231,7 +293,11 @@
                 @forelse($companies as $company)
 
                     <tr>
-
+                        <td>
+    <input type="checkbox"
+           class="company-checkbox"
+           value="{{ $company->id }}">
+</td>
                         <td>
 
                             @if($company->logo)
@@ -512,3 +578,112 @@
 </div>
 
 @endsection
+
+@push('scripts')
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    document.getElementById('select-all-companies')
+    ?.addEventListener('change', function () {
+
+        document.querySelectorAll('.company-checkbox')
+        .forEach(cb => {
+            cb.checked = this.checked;
+        });
+
+    });
+
+    function bulkAction(action) {
+
+        let ids = [];
+
+        document
+        .querySelectorAll('.company-checkbox:checked')
+        .forEach(cb => {
+            ids.push(cb.value);
+        });
+
+        if (ids.length === 0) {
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Warning',
+                text: 'Please select companies.'
+            });
+
+            return;
+        }
+
+        fetch("{{ route('companies.bulk-action') }}", {
+
+            method: 'POST',
+
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document
+                    .querySelector('meta[name="csrf-token"]')
+                    .content
+            },
+
+            body: JSON.stringify({
+                action: action,
+                ids: ids
+            })
+
+        })
+
+        .then(async response => {
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message);
+            }
+
+            return data;
+        })
+
+        .then(data => {
+
+            Swal.fire({
+                icon: 'success',
+                title: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+
+        })
+
+        .catch(error => {
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Notice',
+                text: error.message
+            });
+
+        });
+
+    }
+
+    document.getElementById('bulk-delete')
+    ?.addEventListener('click', () => bulkAction('delete'));
+
+    document.getElementById('bulk-activate')
+    ?.addEventListener('click', () => bulkAction('activate'));
+
+    document.getElementById('bulk-deactivate')
+    ?.addEventListener('click', () => bulkAction('deactivate'));
+
+});
+
+</script>
+
+@endpush

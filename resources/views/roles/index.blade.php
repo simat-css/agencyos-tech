@@ -331,7 +331,7 @@
 
         {{-- System Roles Pagination --}}
         <div class="mt-3">
-            {{ $systemRoles->links() }}
+          {{ $systemRoles->appends(request()->query())->links() }}
         </div>
 
     </div>
@@ -476,7 +476,7 @@
 
         {{-- Custom Roles Pagination --}}
         <div class="mt-3">
-            {{ $customRoles->links() }}
+            {{ $customRoles->appends(request()->query())->links() }}
         </div>
 
     </div>

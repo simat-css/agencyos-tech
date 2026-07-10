@@ -19,58 +19,112 @@ class DepartmentController extends Controller
         $this->departmentService = $departmentService;
     }
 
-    /**
-     * Department Listing
-     */
     public function index()
-    {
-        $query = Department::with('company');
+{
+    $companyQuery = Company::with([
+        'departments' => function ($query) {
 
-        if (!auth()->user()->hasRole('Super Admin')) {
-            $query->where('company_id', auth()->user()->company_id);
-        }
+            $query->latest();
 
-        // Search
-        if (request('search')) {
-            $query->where(function ($q) {
-                $q->where('name', 'like', '%' . request('search') . '%')
-                    ->orWhere('code', 'like', '%' . request('search') . '%');
-            });
+            // Department Search
+            if (request('search')) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . request('search') . '%')
+                      ->orWhere('code', 'like', '%' . request('search') . '%');
+                });
+            }
+
+            // Status Filter
+            if (request()->filled('status')) {
+                $query->where('status', request('status'));
+            }
         }
+    ]);
+
+    // Non Super Admin
+    if (!auth()->user()->hasRole('Super Admin')) {
+
+        $companyQuery->where(
+            'id',
+            auth()->user()->company_id
+        );
+
+    } else {
 
         // Company Filter
         if (request('company')) {
-            $query->where('company_id', request('company'));
+
+            $companyQuery->where(
+                'id',
+                request('company')
+            );
+
         }
 
-        // Status Filter
-        if (request()->filled('status')) {
-            $query->where('status', request('status'));
-        }
-
-        $departments = $query
-       ->latest()
-      ->paginate(10)
-      ->withQueryString();
-
-        return view(
-    'departments.index',
-    [
-        'departments'       => $departments,
-        'companies'         => Company::active()->orderBy('name')->get(),
-
-        'totalDepartments'  => Department::count(),
-
-        'activeDepartments' => Department::where('status', 1)->count(),
-
-        'inactiveDepartments'=> Department::where('status', 0)->count(),
-
-        // Add this
-        'hasCompany' => Company::exists(),
-    ]
-);
     }
 
+    // Only companies having departments
+    $companyQuery->whereHas('departments', function ($query) {
+
+        if (request('search')) {
+
+            $query->where(function ($q) {
+
+                $q->where(
+                    'name',
+                    'like',
+                    '%' . request('search') . '%'
+                )
+                ->orWhere(
+                    'code',
+                    'like',
+                    '%' . request('search') . '%'
+                );
+
+            });
+
+        }
+
+        if (request()->filled('status')) {
+
+            $query->where(
+                'status',
+                request('status')
+            );
+
+        }
+
+    });
+
+    $companiesWithDepartments = $companyQuery
+        ->latest()
+        ->paginate(10)
+        ->withQueryString();
+
+    return view('departments.index', [
+
+        'companiesWithDepartments' => $companiesWithDepartments,
+
+        'companies' => Company::active()
+            ->orderBy('name')
+            ->get(),
+
+        'totalDepartments' => Department::count(),
+
+        'activeDepartments' => Department::where(
+            'status',
+            1
+        )->count(),
+
+        'inactiveDepartments' => Department::where(
+            'status',
+            0
+        )->count(),
+
+        'hasCompany' => Company::exists(),
+
+    ]);
+}
     /**
      * Create Form
      */

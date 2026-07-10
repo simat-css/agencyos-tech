@@ -7,6 +7,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,7 +29,7 @@ Route::get('/', function () {
 
 Route::get('/dashboard',
 [DashboardController::class,'index'])
-->middleware('auth')
+->middleware(['auth','verified'])
 ->name('dashboard');
 
 /*
@@ -102,6 +103,10 @@ Route::middleware(['auth'])->group(function () {
             Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])
                 ->middleware('permission:companies.edit')
                 ->name('toggle-status');
+
+                Route::post('/bulk-action', [CompanyController::class, 'bulkAction'])
+            ->middleware('permission:companies.edit')
+            ->name('bulk-action');
 
         });
 
@@ -210,5 +215,61 @@ Route::middleware(['auth'])
             ->name('destroy');
 
     });
+
+    //User Module 
+    Route::prefix('users')
+->name('users.')
+->group(function () {
+
+        Route::get('/', [UserController::class, 'index'])
+            ->middleware('permission:users.view')
+            ->name('index');
+
+        Route::get('/create', [UserController::class, 'create'])
+            ->middleware('permission:users.create')
+            ->name('create');
+
+        Route::post('/', [UserController::class, 'store'])
+            ->middleware('permission:users.create')
+            ->name('store');
+
+    // EXPORT HERE
+    Route::get('/export', [UserController::class, 'export'])
+        ->middleware('permission:users.export')
+        ->name('export');
+
+  Route::post('/import', [UserController::class, 'import'])
+    ->middleware('permission:users.import')
+    ->name('import');   
+
+ Route::post('/bulk-action',[UserController::class,'bulkAction'])
+->middleware('permission:users.edit')
+->name('bulk-action');
+
+            Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus'])
+           ->middleware('permission:users.edit')
+            ->name('toggle-status');
+
+        Route::get('/{user}', [UserController::class, 'show'])
+            ->middleware('permission:users.view')
+            ->name('show');
+
+      Route::get('/{user}/edit', [UserController::class, 'edit'])
+            ->middleware('permission:users.edit')
+            ->name('edit');
+
+        Route::put('/{user}', [UserController::class, 'update'])
+            ->middleware('permission:users.edit')
+            ->name('update');
+
+       Route::delete('/{user}', [UserController::class, 'destroy'])
+            ->middleware('permission:users.delete')
+            ->name('destroy');
+
+                        //for loading department in create user
+            Route::get('/companies/{company}/departments',
+          [UserController::class, 'getDepartments']
+          )->name('companies.departments');
+});
 
 require __DIR__ . '/auth.php';

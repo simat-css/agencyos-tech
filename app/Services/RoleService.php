@@ -13,49 +13,23 @@ class RoleService
     |--------------------------------------------------------------------------
     */
 
-public function getSystemRoles()
+public function getSystemRoles($search = null)
 {
-    return Role::with('permissions')
-        ->where('is_system', true)
-        ->orderBy('name')
-        ->paginate(10, ['*'], 'system_page')
-        ->withQueryString();
+    return Role::whereNull('company_id')
+        ->when($search, function ($query) use ($search) {
+            $query->where('name', 'like', "%{$search}%");
+        })
+        ->paginate(10);
 }
 
-public function getCustomRoles()
+public function getCustomRoles($search = null)
 {
-    return Role::with(['permissions','company'])
-
-        ->where('is_system', false)
-
-        ->when(
-            !auth()->user()->hasRole('Super Admin'),
-            function ($query) {
-
-                $query->where(
-                    'company_id',
-                    auth()->user()->company_id
-                );
-
-            }
-        )
-
-        ->when(
-            request('search'),
-            function ($query) {
-
-                $query->where(
-                    'name',
-                    'like',
-                    '%' . request('search') . '%'
-                );
-
-            }
-        )
-
-        ->latest()
-        ->paginate(10)
-        ->withQueryString();
+    return Role::whereNotNull('company_id')
+        ->with('company')
+        ->when($search, function ($query) use ($search) {
+            $query->where('name', 'like', "%{$search}%");
+        })
+        ->paginate(10);
 }
 
     /*

@@ -30,12 +30,10 @@
         @if($hasCompany)
 
     <a href="{{ route('departments.create') }}"
-       class="btn btn-primary">
-
-        <i class="fas fa-plus me-1"></i>
-        Add Department
-
-    </a>
+   class="btn btn-primary">
+    <i class="fas fa-plus me-1"></i>
+    Add Department
+</a>
 
 @else
 
@@ -58,67 +56,33 @@
     </div>
 
     {{-- Statistics --}}
-    <div class="row mb-4">
+<div class="row mb-4">
 
-        <div class="col-lg-4 col-md-4 mb-3">
+    <div class="col-md-4">
 
-            <div class="small-box bg-primary">
+        <div class="card border-0 shadow-sm h-100">
 
-                <div class="inner">
+            <div class="card-body">
 
-                    <h3>{{ $totalDepartments }}</h3>
+                <div class="d-flex justify-content-between align-items-center">
 
-                    <p>Total Departments</p>
+                    <div>
 
-                </div>
+                        <small class="text-muted">
+                            Total Departments
+                        </small>
 
-                <div class="icon">
+                        <h2 class="fw-bold mb-0">
+                            {{ $totalDepartments }}
+                        </h2>
 
-                    <i class="fas fa-building"></i>
+                    </div>
 
-                </div>
+                    <div class="bg-primary text-white rounded p-3">
 
-            </div>
+                        <i class="fas fa-sitemap fa-2x"></i>
 
-        </div>
-
-        <div class="col-lg-4 col-md-4 mb-3">
-
-            <div class="small-box bg-success">
-
-                <div class="inner">
-
-                    <h3>{{ $activeDepartments }}</h3>
-
-                    <p>Active Departments</p>
-
-                </div>
-
-                <div class="icon">
-
-                    <i class="fas fa-check-circle"></i>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-lg-4 col-md-4 mb-3">
-
-            <div class="small-box bg-danger">
-
-                <div class="inner">
-
-                    <h3>{{ $inactiveDepartments }}</h3>
-
-                    <p>Inactive Departments</p>
-
-                </div>
-
-                <div class="icon">
-
-                    <i class="fas fa-ban"></i>
+                    </div>
 
                 </div>
 
@@ -127,6 +91,76 @@
         </div>
 
     </div>
+
+    <div class="col-md-4">
+
+        <div class="card border-0 shadow-sm h-100">
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <div>
+
+                        <small class="text-muted">
+                            Active Departments
+                        </small>
+
+                        <h2 class="fw-bold text-success mb-0">
+                            {{ $activeDepartments }}
+                        </h2>
+
+                    </div>
+
+                    <div class="bg-success text-white rounded p-3">
+
+                        <i class="fas fa-check-circle fa-2x"></i>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card border-0 shadow-sm h-100">
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <div>
+
+                        <small class="text-muted">
+                            Inactive Departments
+                        </small>
+
+                        <h2 class="fw-bold text-danger mb-0">
+                            {{ $inactiveDepartments }}
+                        </h2>
+
+                    </div>
+
+                    <div class="bg-danger text-white rounded p-3">
+
+                        <i class="fas fa-ban fa-2x"></i>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
     {{-- Filters --}}
     <div class="card mb-4">
@@ -234,49 +268,64 @@
 
     </div>
 
-@if($departments->count() > 0)
-    <div class="card mb-3">
+@if($companiesWithDepartments->count() > 0)
 
-    <div class="card-body d-flex gap-2">
+<div class="card mb-3 border-0 shadow-sm">
 
-        <button
-            id="bulk-delete"
-            class="btn btn-danger">
+    <div class="card-body">
 
-            <i class="fas fa-trash"></i>
+        <div class="d-flex align-items-center justify-content-between">
 
-            Delete Selected
+            <div>
 
-        </button>
+                <h6 class="mb-0 fw-semibold">
+                    Bulk Actions
+                </h6>
 
-        <button
-            id="bulk-activate"
-            class="btn btn-success">
+                <small class="text-muted">
+                    Apply actions on selected companies
+                </small>
 
-            Activate
+            </div>
 
-        </button>
+            <div class="btn-group">
 
-        <button
-            id="bulk-deactivate"
-            class="btn btn-warning">
+                <button id="bulk-activate"
+                        class="btn btn-outline-success">
 
-            Deactivate
+                    <i class="fas fa-check-circle me-1"></i>
+                    Activate
 
-        </button>
+                </button>
+
+                <button id="bulk-deactivate"
+                        class="btn btn-outline-warning">
+
+                    <i class="fas fa-ban me-1"></i>
+                    Deactivate
+
+                </button>
+
+                <button id="bulk-delete"
+                        class="btn btn-outline-danger">
+
+                    <i class="fas fa-trash me-1"></i>
+                    Delete
+
+                </button>
+
+            </div>
+
+        </div>
 
     </div>
 
 </div>
+
 @endif
     {{-- Company Wise Department List --}}
 
-@php
-    $groupedDepartments = $departments->getCollection()->groupBy('company_id');
-@endphp
-
-
-@forelse($groupedDepartments as $companyId => $companyDepartments)
+@forelse($companiesWithDepartments as $company)
 
 
 <div class="card mb-4 shadow-sm">
@@ -294,7 +343,7 @@
 
                     <i class="fas fa-building me-2"></i>
 
-                    {{ $companyDepartments->first()->company->name }}
+                   {{ $company->name }}
 
                 </h5>
 
@@ -303,7 +352,7 @@
 
                     Total Departments:
                     <strong>
-                        {{ $companyDepartments->count() }}
+                       {{ $company->departments->count() }}
                     </strong>
 
                 </small>
@@ -313,14 +362,11 @@
 
 
 
-            <a href="{{ route('departments.create',['company'=>$companyId]) }}"
-               class="btn btn-primary btn-sm">
-
-                <i class="fas fa-plus me-1"></i>
-
-                Add Department
-
-            </a>
+            <a href="{{ route('departments.create',['company'=>$company->id]) }}"
+   class="btn btn-primary btn-sm">
+    <i class="fas fa-plus me-1"></i>
+    Add Department
+</a>
 
 
         </div>
@@ -349,7 +395,7 @@
     <input 
         type="checkbox"
         class="company-select-all"
-        data-company="{{ $companyId }}">
+       data-company="{{ $company->id }}">
 
 </th>
 
@@ -375,7 +421,7 @@
                 <tbody>
 
 
-                @foreach($companyDepartments as $department)
+               @foreach($company->departments as $department)
 
 
                 <tr>
@@ -386,7 +432,7 @@
                         <input 
 type="checkbox"
 class="department-checkbox"
-data-company="{{ $companyId }}"
+data-company="{{ $company->id }}"
 value="{{ $department->id }}">
 
                     </td>
@@ -530,11 +576,11 @@ value="{{ $department->id }}">
 
 {{-- Pagination --}}
 
-@if($departments->hasPages())
+@if($companiesWithDepartments->hasPages())
 
 <div class="mt-3">
 
-    {{ $departments->links() }}
+    {{ $companiesWithDepartments->links() }}
 
 </div>
 
@@ -751,12 +797,10 @@ function bulkAction(action) {
     .catch(error => {
 
         Swal.fire({
-
-            icon: 'error',
-            title: 'Error',
-            text: error.message
-
-        });
+                icon: 'warning',
+                title: 'Notice',
+                text: error.message
+            });
 
     });
 

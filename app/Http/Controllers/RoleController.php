@@ -23,13 +23,32 @@ class RoleController extends Controller
      */
 public function index(Request $request)
 {
-    $systemRoles = $this->roleService->getSystemRoles();
+    $search = $request->search;
 
-    $customRoles = $this->roleService->getCustomRoles();
+    $systemRoles = Role::query()
+        ->whereNull('company_id');
 
-    $permissionsCount = $this->roleService
-        ->getPermissions()
-        ->count();
+    $customRoles = Role::query()
+        ->whereNotNull('company_id');
+
+    if ($search) {
+
+        $systemRoles->where('name', 'like', "%{$search}%");
+
+        $customRoles->where('name', 'like', "%{$search}%");
+    }
+
+    $systemRoles = $systemRoles
+        ->with('permissions')
+        ->latest()
+        ->paginate(10, ['*'], 'system_page');
+
+    $customRoles = $customRoles
+        ->with(['permissions', 'company'])
+        ->latest()
+        ->paginate(10, ['*'], 'custom_page');
+
+    $permissionsCount = Permission::count();
 
     return view('roles.index', compact(
         'systemRoles',
