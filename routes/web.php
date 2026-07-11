@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AIController;
 
 /*
 |--------------------------------------------------------------------------
@@ -109,7 +110,10 @@ Route::middleware(['auth'])->group(function () {
             ->name('bulk-action');
 
         });
-
+        
+//Ai Features
+Route::post('/ai/execute', [AIController::class, 'execute'])
+    ->name('ai.execute');
     /*
     |--------------------------------------------------------------------------
     | Department Management

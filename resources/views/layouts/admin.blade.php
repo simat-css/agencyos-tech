@@ -70,6 +70,8 @@
 
 </div>
 
+{{-- AI Assistant --}}
+@include('partials.ai-assistant')
 {{-- AdminLTE --}}
 <script src="{{ asset('adminlte/dist/js/adminlte.js') }}"></script>
 

@@ -103,6 +103,8 @@ class RoleSeeder extends Seeder
         'activity_logs.view',
 
         'notifications.view',
+        'ai.commands.view',
+        'ai.commands.execute',
 
     ]);
         /*
