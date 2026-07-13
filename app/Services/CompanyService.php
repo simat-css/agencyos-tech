@@ -104,7 +104,7 @@ class CompanyService
     });
 }
 
-  public function toggleStatus(Company $company): Company
+ public function toggleStatus(Company $company): Company
 {
     return DB::transaction(function () use ($company) {
 
@@ -112,33 +112,35 @@ class CompanyService
         $newStatus = ! $company->status;
 
         $company->update([
-            'status' => $newStatus,
+            'status'     => $newStatus,
+            'updated_by' => Auth::id(),
         ]);
 
-        // Company Deactivate
-        if (!$newStatus) {
+        /*
+        |--------------------------------------------------------------------------
+        | Company Deactivate
+        |--------------------------------------------------------------------------
+        | Deactivate all active departments
+        */
+        if (! $newStatus) {
 
             $company->departments()
                 ->where('status', 1)
                 ->update([
-                    'status' => 0,
+                    'status'           => 0,
                     'auto_deactivated' => 1,
+                    'updated_by'       => Auth::id(),
                 ]);
-
         }
 
-        // Company Activate
-        else {
-
-            $company->departments()
-                ->where('auto_deactivated', 1)
-                ->update([
-                    'status' => 1,
-                    'auto_deactivated' => 0,
-                ]);
-
-        }
-
+        /*
+        |--------------------------------------------------------------------------
+        | Company Activate
+        |--------------------------------------------------------------------------
+        | Departments remain inactive.
+        | Admin must activate manually.
+        */
+        
         return $company->fresh();
     });
 }

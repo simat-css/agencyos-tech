@@ -3,15 +3,22 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\AICommandService;
+use App\Services\AI\CompanyAIService;
+use App\Services\AI\DepartmentAIService;
 
 class AIController extends Controller
 {
-    protected AICommandService $aiService;
+    protected CompanyAIService $companyAIService;
+    protected DepartmentAIService $departmentAIService;
 
-    public function __construct(AICommandService $aiService)
-    {
-        $this->aiService = $aiService;
+    public function __construct(
+        CompanyAIService $companyAIService,
+        DepartmentAIService $departmentAIService
+    ) {
+
+        $this->companyAIService = $companyAIService;
+        $this->departmentAIService = $departmentAIService;
+
     }
 
     public function execute(Request $request)
@@ -20,10 +27,71 @@ class AIController extends Controller
             'command' => 'required|string|max:1000'
         ]);
 
-        $result = $this->aiService->process(
+        $command = strtolower(
+            trim($request->command)
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pending Department Confirmations
+        |--------------------------------------------------------------------------
+        */
+if (
+    $command === 'confirm'
+    &&
+    (
+        session()->has('pending_department_update')
+        ||
+        session()->has('pending_department_delete')
+        ||
+        session()->has('pending_department_status_update')
+    )
+) {
+
+    $result =
+        $this->departmentAIService->process(
             $request->command
         );
 
-        return response()->json($result);
+}
+
+        /*
+        |--------------------------------------------------------------------------
+        | Department Commands
+        |--------------------------------------------------------------------------
+        */
+
+        elseif (
+            str_contains(
+                $command,
+                'department'
+            )
+        ) {
+
+            $result =
+                $this->departmentAIService->process(
+                    $request->command
+                );
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Company Commands
+        |--------------------------------------------------------------------------
+        */
+
+        else {
+
+            $result =
+                $this->companyAIService->process(
+                    $request->command
+                );
+
+        }
+
+        return response()->json(
+            $result
+        );
     }
 }

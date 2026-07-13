@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\AI;
 
 use App\Models\Company;
+use App\Services\CompanyService;
 use App\Notifications\CompanyActionNotification;
-use Illuminate\Support\Facades\Auth;
 
-class AICommandService
+class CompanyAIService
 {
     protected CompanyService $companyService;
 
@@ -16,12 +16,14 @@ class AICommandService
         $this->companyService = $companyService;
     }
 
-    private function companyQuery()
+private function companyQuery()
 {
     $query = Company::query();
 
-    if (auth()->user()->hasRole('Company Admin')) {
-
+    if (
+        auth()->check() &&
+        auth()->user()->hasRole('Company Admin')
+    ) {
         $query->where(
             'id',
             auth()->user()->company_id
@@ -77,6 +79,13 @@ class AICommandService
                         "Company with email {$data['email']} already exists."
                 ];
             }
+
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        return [
+        'success' => false,
+        'message' => 'Invalid email address.'
+      ];
+}
 
             $company = $this->companyService->create($data);
 
@@ -238,9 +247,14 @@ if (str_starts_with(strtolower($command), 'update company')) {
 
             $companyName = trim($matches[1] ?? '');
 
-            $company = $this->companyQuery()->with('departments')
-                ->where('name', $companyName)
-                ->first();
+            $company = $this->companyQuery()
+    ->with('departments')
+    ->where(
+        'name',
+        'like',
+        "%{$companyName}%"
+    )
+    ->first();
 
             if (!$company) {
 
@@ -278,9 +292,8 @@ if (str_starts_with(strtolower($command), 'update company')) {
 */
 if (str_starts_with(strtolower($command), 'deactivate company')) {
 
-    return $this->changeCompanyStatus(
-        $command,
-        false
+    return $this->requestCompanyDeactivateConfirmation(
+        $command
     );
 }
 
@@ -340,38 +353,20 @@ if (strtolower($command) === 'confirm') {
 
     }
 
+     /*
+    |--------------------------------------------------------------------------
+    | CONFIRM Deactivate
+    |--------------------------------------------------------------------------
+    */
+
+    if (session()->has('pending_company_deactivate')) {
+    return $this->confirmCompanyDeactivate($command);
+}
+
 
     return [
         'success' => false,
         'message' => 'No pending action found.'
-    ];
-}
-/*
-|--------------------------------------------------------------------------
-| CONFIRM DELETE COMPANY WITH UPDATE SUPPORT
-|--------------------------------------------------------------------------
-*/
-if (strtolower($command) === 'confirm') {
-
-
-    if (session()->has('pending_company_delete')) {
-
-        return $this->confirmCompanyDelete($command);
-
-    }
-
-
-    if (session()->has('pending_company_update')) {
-
-        return $this->confirmCompanyUpdate($command);
-
-    }
-
-
-    return [
-        'success' => false,
-        'message' =>
-            'No pending action found.'
     ];
 }
 
@@ -643,6 +638,20 @@ private function requestCompanyUpdateConfirmation(
         ];
     }
 
+    if (isset($updateData['email']) && !filter_var( $updateData['email'],FILTER_VALIDATE_EMAIL)) {
+    return [
+        'success' => false,
+        'message' => 'Invalid email address.'
+    ];
+}
+
+if (isset($updateData['email']) && Company::where('email', $updateData['email'])->where('id', '!=', $company->id)->exists()) {
+    return [
+        'success' => false,
+        'message' => 'Email already exists.'
+    ];
+}
+
 
     session([
         'pending_company_update' => [
@@ -681,177 +690,139 @@ private function requestCompanyUpdateConfirmation(
         'message' => $message
     ];
 }
-private function updateCompanyFromAI(
+
+private function requestCompanyDeactivateConfirmation(
     string $command
 ): array {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Permission Check
-    |--------------------------------------------------------------------------
-    */
-    if (
-        !auth()->check() ||
-        !auth()->user()->can('companies.edit')
-    ) {
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission to update companies.'
-        ];
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Extract Company Name
-    |--------------------------------------------------------------------------
-    */
     preg_match(
-        '/update company\s+(.*?)\s+(email|phone|address|name)\s+/i',
+        '/deactivate company\s+(.*)$/i',
         $command,
         $matches
     );
 
-
     $companyName = trim($matches[1] ?? '');
 
-
-    if (empty($companyName)) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Please provide company name.'
-        ];
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Find Company (Company Scope)
-    |--------------------------------------------------------------------------
-    */
     $company = $this->companyQuery()
-        ->where(
-            'name',
-            'like',
-            "%{$companyName}%"
-        )
+        ->with('departments')
+        ->where('name', 'like', "%{$companyName}%")
         ->first();
-
 
     if (!$company) {
 
         return [
             'success' => false,
-            'message' =>
-                "Company {$companyName} not found."
+            'message' => "Company {$companyName} not found."
         ];
     }
 
+    if (!auth()->check() || !auth()->user()->can('companies.edit')) {
+    return [
+        'success' => false,
+        'message' =>
+            'You do not have permission to deactivate companies.'
+    ];
+}
 
-    /*
-    |--------------------------------------------------------------------------
-    | Prepare Update Data
-    |--------------------------------------------------------------------------
-    */
-    $updateData = [];
+    if (!$company->status) {
 
+    return [
+        'success' => false,
+        'message' =>
+            "Company {$company->name} is already inactive."
+    ];
+}
 
-    if (
-        preg_match(
-            '/email\s+([^\s]+)/i',
-            $command,
-            $email
-        )
-    ) {
+    session([
+        'pending_company_deactivate' => [
+            'company_id' => $company->id
+        ]
+    ]);
 
-        $updateData['email'] = $email[1];
-    }
+    return [
+    'success' => true,
+    'message' =>
+        "⚠️ COMPANY DEACTIVATION CONFIRMATION\n\n" .
+        "🏢 Company Details\n\n" .
+        "Name: {$company->name}\n" .
+        "Status: Active\n" .
+        "Departments: " . $company->departments->count() . "\n" .
+        "Active Departments: " . $company->departments()
+            ->where('status', 1)
+            ->count() . "\n\n" .
+        "⚠️ Warning:\n" .
+        "All active departments under this company will also be automatically deactivated.\n" .
+        "Departments will not be automatically reactivated when the company is activated again.\n\n" .
+        "To confirm deactivation, type:\n" .
+        "confirm"
+];
+}
 
+private function confirmCompanyDeactivate(
+    string $command
+): array {
 
-    if (
-        preg_match(
-            '/phone\s+([0-9]+)/i',
-            $command,
-            $phone
-        )
-    ) {
+    $pending = session(
+        'pending_company_deactivate'
+    );
 
-        $updateData['phone'] = $phone[1];
-    }
-
-
-    if (
-        preg_match(
-            '/address\s+(.*)$/i',
-            $command,
-            $address
-        )
-    ) {
-
-        $updateData['address'] = trim($address[1]);
-    }
-
-
-
-    if (empty($updateData)) {
+    if (!$pending) {
 
         return [
             'success' => false,
-            'message' =>
-                'No update information found.'
+            'message' => 'No pending deactivation request found.'
         ];
     }
 
+    $company = $this->companyQuery()
+        ->find($pending['company_id']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Update Company
-    |--------------------------------------------------------------------------
-    */
-    $company->update($updateData);
+    if (!$company) {
 
+        return [
+            'success' => false,
+            'message' => 'Company not found.'
+        ];
+    }
 
+    if (!auth()->check() || !auth()->user()->can('companies.edit')) {
+    return [
+        'success' => false,
+        'message' =>
+            'You do not have permission to deactivate companies.'
+    ];
+}
 
-    /*
-    |--------------------------------------------------------------------------
-    | Activity Log
-    |--------------------------------------------------------------------------
-    */
+    $this->companyService->toggleStatus(
+        $company
+    );
+
     activity()
         ->causedBy(auth()->user())
         ->performedOn($company)
         ->withProperties([
             'source' => 'AI Assistant',
-            'command' => $command,
-            'changes' => $updateData
+            'command' => $command
         ])
-        ->log(
-            'Company updated via AI Assistant'
-        );
+        ->log('Company deactivated via AI Assistant');
 
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Notification
-    |--------------------------------------------------------------------------
-    */
     auth()->user()->notify(
         new CompanyActionNotification(
-            "Company {$company->name} updated via AI Assistant."
+            "Company {$company->name} deactivated via AI Assistant."
         )
     );
 
+    session()->forget(
+        'pending_company_deactivate'
+    );
 
     return [
         'success' => true,
         'message' =>
-            "Company {$company->name} has been updated successfully."
+            "Company {$company->name} has been deactivated successfully. All active departments under this company were also automatically deactivated."
     ];
-}    
+}
+
 private function requestCompanyDeleteConfirmation(
     string $command
 ): array {
@@ -931,24 +902,25 @@ $company = $this->companyQuery()
     ]);
 
 
-    return [
-        'success' => true,
-        'message' =>
-            "⚠️ DELETE COMPANY CONFIRMATION\n\n" .
-"Are you sure you want to delete this company?\n\n" .
-"🏢 Company Details\n\n" .
-"Name: {$company->name}\n" .
-"Email: {$company->email}\n" .
-"Phone: {$company->phone}\n" .
-"Address: {$company->address}\n" .
-"Status: " . ($company->status ? 'Active' : 'Inactive') . "\n" .
-"Departments: " . $company->departments->count() . "\n\n" .
-"⚠️ Warning:\n" .
-"This action will soft delete the company.\n" .
-"The company can be restored later.\n\n" .
-"To confirm deletion, type:\n" .
-"confirm delete company {$company->name}"
-    ];
+ return [
+    'success' => true,
+    'message' =>
+        "⚠️ DELETE COMPANY CONFIRMATION\n\n" .
+        "Are you sure you want to delete this company?\n\n" .
+        "🏢 Company Details\n\n" .
+        "Name: {$company->name}\n" .
+        "Email: {$company->email}\n" .
+        "Phone: {$company->phone}\n" .
+        "Address: {$company->address}\n" .
+        "Status: " . ($company->status ? 'Active' : 'Inactive') . "\n" .
+        "Departments: " . $company->departments->count() . "\n\n" .
+        "⚠️ Warning:\n" .
+    "Deleting this company will also delete all associated departments.\n" .
+"Users assigned to those departments may lose department association.\n" .
+"This action cannot be undone from the AI Assistant.\n\n" .
+        "To confirm deletion, type:\n" .
+        "confirm"
+];
 }
 private function confirmCompanyUpdate(
     string $command
@@ -1111,7 +1083,7 @@ private function confirmCompanyDelete(
     */
     $companyName = $company->name;
 
-    $company->delete();
+    $this->companyService->delete($company);
 
 
     /*
@@ -1182,10 +1154,11 @@ private function confirmCompanyDelete(
 
         $companyName = trim($matches[2] ?? '');
 
-      $company = $this->companyQuery()
+    $company = $this->companyQuery()
     ->where(
         'name',
-        $companyName
+        'like',
+        "%{$companyName}%"
     )
     ->first();
 

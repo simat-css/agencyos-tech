@@ -227,22 +227,33 @@ class DepartmentController extends Controller
             ->with('success', 'Department updated successfully.');
     }
 
-    /**
-     * Delete Department
-     */
-    public function destroy(Department $department)
-    {
-        $this->departmentService->delete($department);
-
-        activity()
-            ->causedBy(Auth::user())
-            ->performedOn($department)
-            ->log('Department deleted successfully.');
+/**
+ * Delete Department
+ */
+public function destroy(Department $department)
+{
+    // Check Assigned Users
+    if ($department->users()->exists()) {
 
         return redirect()
-            ->route('departments.index')
-            ->with('success', 'Department deleted successfully.');
+            ->back()
+            ->with(
+                'error',
+                "Cannot delete department '{$department->name}' because users are assigned to it."
+            );
     }
+
+    $this->departmentService->delete($department);
+
+    activity()
+        ->causedBy(Auth::user())
+        ->performedOn($department)
+        ->log('Department deleted successfully.');
+
+    return redirect()
+        ->route('departments.index')
+        ->with('success', 'Department deleted successfully.');
+}
 
     /**
      * Toggle Status
@@ -265,84 +276,154 @@ class DepartmentController extends Controller
             'status' => $department->status ? 0 : 1
         ]);
 
+        activity()
+    ->causedBy(Auth::user())
+    ->performedOn($department)
+    ->log(
+        $department->status
+            ? 'Department activated successfully.'
+            : 'Department deactivated successfully.'
+    );
+
         return response()->json([
             'message' => 'Department status updated successfully'
         ]);
     }
 
-    public function bulkAction(Request $request)
-    {
-        $request->validate([
-            'action' => 'required',
-            'ids'    => 'required|array',
+   public function bulkAction(Request $request)
+{
+    $request->validate([
+        'action' => 'required|in:activate,deactivate,delete',
+        'ids'    => 'required|array|min:1',
+    ]);
+
+    $departments = Department::whereIn(
+        'id',
+        $request->ids
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Departments
+    |--------------------------------------------------------------------------
+    */
+    if ($request->action === 'delete') {
+
+        $selectedDepartments = $departments->get();
+
+        foreach ($selectedDepartments as $department) {
+
+            if ($department->users()->exists()) {
+
+                return response()->json([
+                    'message' =>
+                        "Department '{$department->name}' cannot be deleted because users are assigned to it."
+                ], 400);
+            }
+
+            activity()
+                ->causedBy(Auth::user())
+                ->performedOn($department)
+                ->log('Department deleted successfully.');
+        }
+
+        $departments->delete();
+
+        return response()->json([
+            'message' => 'Departments deleted successfully'
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Activate Departments
+    |--------------------------------------------------------------------------
+    */
+    if ($request->action === 'activate') {
+
+        $selectedDepartments = $departments
+            ->with('company')
+            ->get();
+
+        foreach ($selectedDepartments as $department) {
+
+            if ($department->status) {
+
+                return response()->json([
+                    'message' =>
+                        "Department '{$department->name}' is already active."
+                ], 400);
+            }
+
+            if (
+                $department->company &&
+                !$department->company->status
+            ) {
+                return response()->json([
+                    'message' =>
+                        "Cannot activate '{$department->name}' because its company is inactive."
+                ], 400);
+            }
+        }
+
+        $departments->update([
+            'status' => 1,
+            'updated_by' => Auth::id(),
         ]);
 
-        $departments = Department::whereIn('id', $request->ids);
+        foreach ($selectedDepartments as $department) {
 
-        // Delete
-        if ($request->action == 'delete') {
-            $departments->delete();
-
-            return response()->json([
-                'message' => 'Departments deleted successfully'
-            ]);
-        }
-
-        // Activate
-        if ($request->action == 'activate') {
-            $selectedDepartments = $departments
-                ->with('company')
-                ->get();
-
-            foreach ($selectedDepartments as $department) {
-                if ($department->status == 1) {
-                    return response()->json([
-                        'message' => 'Selected department is already active.'
-                    ], 400);
-                }
-
-                if (
-                    $department->company &&
-                    $department->company->status == 0
-                ) {
-                    return response()->json([
-                        'message' => 'Cannot activate department because company is inactive.'
-                    ], 400);
-                }
-            }
-
-            $departments->update([
-                'status' => 1
-            ]);
-
-            return response()->json([
-                'message' => 'Departments activated successfully'
-            ]);
-        }
-
-        // Deactivate
-        if ($request->action == 'deactivate') {
-            $selectedDepartments = $departments->get();
-
-            foreach ($selectedDepartments as $department) {
-                if ($department->status == 0) {
-                    return response()->json([
-                        'message' => 'Selected department is already inactive.'
-                    ], 400);
-                }
-            }
-
-            $departments->update([
-                'status' => 0
-            ]);
-
-            return response()->json([
-                'message' => 'Departments deactivated successfully'
-            ]);
+            activity()
+                ->causedBy(Auth::user())
+                ->performedOn($department)
+                ->log('Department activated successfully.');
         }
 
         return response()->json([
-            'message' => 'Invalid action'
-        ], 400);
+            'message' => 'Departments activated successfully'
+        ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deactivate Departments
+    |--------------------------------------------------------------------------
+    */
+    if ($request->action === 'deactivate') {
+
+        $selectedDepartments = $departments->get();
+
+        foreach ($selectedDepartments as $department) {
+
+            if (!$department->status) {
+
+                return response()->json([
+                    'message' =>
+                        "Department '{$department->name}' is already inactive."
+                ], 400);
+            }
+        }
+
+        $departments->update([
+            'status' => 0,
+            'updated_by' => Auth::id(),
+        ]);
+
+        foreach ($selectedDepartments as $department) {
+
+            activity()
+                ->causedBy(Auth::user())
+                ->performedOn($department)
+                ->log('Department deactivated successfully.');
+        }
+
+        return response()->json([
+            'message' => 'Departments deactivated successfully'
+        ]);
+    }
+
+    return response()->json([
+        'message' => 'Invalid action'
+    ], 400);
+}
 }
