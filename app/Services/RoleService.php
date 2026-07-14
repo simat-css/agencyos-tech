@@ -53,27 +53,45 @@ public function create(array $data)
 {
     $user = auth()->user();
 
+    if (
+        !$user->can('roles.assign_permissions')
+    ) {
+        throw new \Exception(
+            'You cannot assign permissions.'
+        );
+    }
+
+
     $isSuperAdmin = $user->hasRole('Super Admin');
 
 
     $role = Role::create([
 
         'name'       => $data['name'],
-
         'guard_name' => 'web',
 
         'company_id' => $isSuperAdmin
             ? null
             : $user->company_id,
 
-        'is_system'  => $isSuperAdmin,
+        'is_system'  => false,
 
     ]);
 
 
-    $role->syncPermissions(
+    $permissions = Permission::whereIn(
+        'name',
         $data['permissions'] ?? []
-    );
+    )->pluck('name');
+
+
+    $role->syncPermissions($permissions);
+
+
+    activity()
+        ->causedBy($user)
+        ->performedOn($role)
+        ->log('Role created');
 
 
     return $role;
@@ -85,41 +103,129 @@ public function create(array $data)
     |--------------------------------------------------------------------------
     */
 
-    public function update(Role $role, array $data)
-    {
-        if (
-            $role->is_system &&
-            !auth()->user()->hasRole('Super Admin')
-        ) {
+   public function update(Role $role, array $data)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | System Role Protection
+    |--------------------------------------------------------------------------
+    */
 
-            throw new \Exception(
-                'System roles can only be managed by Super Admin.'
-            );
-        }
+    if (
+        $role->is_system &&
+        !auth()->user()->hasRole('Super Admin')
+    ) {
 
-        if (
-            !$role->is_system &&
-            !auth()->user()->hasRole('Super Admin') &&
-            $role->company_id != auth()->user()->company_id
-        ) {
-
-            throw new \Exception(
-                'You cannot manage roles from another company.'
-            );
-        }
-
-        $role->update([
-
-            'name' => $data['name'],
-
-        ]);
-
-        $role->syncPermissions(
-            $data['permissions'] ?? []
+        throw new \Exception(
+            'System roles can only be managed by Super Admin.'
         );
 
-        return $role;
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Company Role Access Validation
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !$role->is_system &&
+        !auth()->user()->hasRole('Super Admin') &&
+        $role->company_id != auth()->user()->company_id
+    ) {
+
+        throw new \Exception(
+            'You cannot manage roles from another company.'
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | System Role Name Protection
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $role->is_system &&
+        $role->name !== $data['name']
+    ) {
+
+        throw new \Exception(
+            'System role name cannot be changed.'
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Assignment Validation
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !auth()->user()
+            ->can('roles.assign_permissions')
+    ) {
+
+        throw new \Exception(
+            'You cannot assign permissions.'
+        );
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate Permissions
+    |--------------------------------------------------------------------------
+    */
+
+    $permissions = Permission::whereIn(
+        'name',
+        $data['permissions'] ?? []
+    )->pluck('name');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Role
+    |--------------------------------------------------------------------------
+    */
+
+    $role->update([
+
+        'name' => $data['name'],
+
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sync Permissions
+    |--------------------------------------------------------------------------
+    */
+
+    $role->syncPermissions($permissions);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log
+    |--------------------------------------------------------------------------
+    */
+
+    activity()
+        ->causedBy(auth()->user())
+        ->performedOn($role)
+        ->log('Role updated');
+
+
+    return $role;
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -128,28 +234,42 @@ public function create(array $data)
     */
 
     public function delete(Role $role)
-    {
-        if (
-            $role->is_system &&
-            !auth()->user()->hasRole('Super Admin')
-        ) {
+{
 
-            throw new \Exception(
-                'System roles can only be deleted by Super Admin.'
-            );
-        }
+    if (
+        $role->is_system &&
+        !auth()->user()->hasRole('Super Admin')
+    ) {
 
-        if (
-            !$role->is_system &&
-            !auth()->user()->hasRole('Super Admin') &&
-            $role->company_id != auth()->user()->company_id
-        ) {
+        throw new \Exception(
+            'System roles can only be deleted by Super Admin.'
+        );
 
-            throw new \Exception(
-                'You cannot delete roles from another company.'
-            );
-        }
-
-        return $role->delete();
     }
+
+
+    if (
+        !$role->is_system &&
+        !auth()->user()->hasRole('Super Admin') &&
+        $role->company_id != auth()->user()->company_id
+    ) {
+
+        throw new \Exception(
+            'You cannot delete roles from another company.'
+        );
+
+    }
+
+
+    $role->syncPermissions([]);
+
+
+    activity()
+        ->causedBy(auth()->user())
+        ->performedOn($role)
+        ->log('Role deleted');
+
+
+    return $role->delete();
+}
 }

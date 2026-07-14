@@ -85,6 +85,8 @@ class RoleSeeder extends Seeder
         'roles.create',
         'roles.edit',
         'roles.delete',
+        'roles.assign_permissions',
+        'roles.view_permissions',
 
         'users.view',
         'users.create',

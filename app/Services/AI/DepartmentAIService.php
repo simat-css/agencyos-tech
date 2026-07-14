@@ -1961,25 +1961,25 @@ private function listDepartments(
     string $command
 ): array {
 
-
     /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-if (
-    !$this->hasDepartmentPermission(
-        'departments.view'
-    )
-)
-{
-    return [
-        'success' => false,
-        'message' =>
-            'You do not have permission to view departments.'
-    ];
-}
+    if (
+        !$this->hasDepartmentPermission(
+            'departments.view'
+        )
+    ) {
+
+        return [
+            'success' => false,
+            'message' =>
+                'You do not have permission to view departments.'
+        ];
+
+    }
 
 
     /*
@@ -2004,39 +2004,27 @@ if (
             );
 
     } else {
-  
 
-if (
-    auth()->user()->hasRole('Company Admin')
-) {
+        if (
+            empty($data['company_name'])
+        ) {
 
-    $company =
-        Company::find(
-            auth()->user()->company_id
-        );
+            return [
+                'success' => false,
+                'message' =>
+                    'Company name is required.'
+            ];
 
-} else {
+        }
 
-    if (
-        empty($data['company_name'])
-    ) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Company name is required.'
-        ];
+        $company =
+            Company::where(
+                'name',
+                'like',
+                '%'.$data['company_name'].'%'
+            )->first();
 
     }
-
-    $company =
-        Company::where(
-            'name',
-            'like',
-            '%'.$data['company_name'].'%'
-        )->first();
-
-}
 
 
     if (!$company) {

@@ -8,491 +8,666 @@ use App\Models\Department;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Auth;
 use App\Exports\UsersExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\UsersImport;
 
 class UserController extends Controller
 {
-
     protected UserService $userService;
-
 
     public function __construct(UserService $userService)
     {
         $this->userService = $userService;
     }
 
-
-public function index()
-{
-    $query = User::with([
-        'company',
-        'department',
-        'roles'
-    ]);
-
-    // Company Admin can only see own company users
-    if (auth()->user()->hasRole('Company Admin')) {
-
-        $query->where(
-            'company_id',
-            auth()->user()->company_id
-        );
-    }
-
-    // Search
-    if (request('search')) {
-
-        $search = request('search');
-
-        $query->where(function ($q) use ($search) {
-
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%")
-
-              ->orWhereHas('company', function ($company) use ($search) {
-                  $company->where('name', 'like', "%{$search}%");
-              })
-
-              ->orWhereHas('department', function ($department) use ($search) {
-                  $department->where('name', 'like', "%{$search}%");
-              })
-
-              ->orWhereHas('roles', function ($role) use ($search) {
-                  $role->where('name', 'like', "%{$search}%");
-              });
-
-        });
-    }
-
-    // Company Filter (Super Admin only)
-    if (
-        request('company') &&
-        !auth()->user()->hasRole('Company Admin')
-    ) {
-
-        $query->where(
-            'company_id',
-            request('company')
-        );
-    }
-
-    // Department Filter
-    if (request('department')) {
-
-        $query->where(
-            'department_id',
-            request('department')
-        );
-    }
-
-    // Status Filter
-    if (request()->filled('status')) {
-
-        $query->where(
-            'status',
-            request('status')
-        );
-    }
-
-    $users = $query
-        ->latest()
-        ->paginate(10)
-        ->withQueryString();
-
     /*
     |--------------------------------------------------------------------------
-    | Companies Dropdown
+    | Users Listing
     |--------------------------------------------------------------------------
     */
-    if (auth()->user()->hasRole('Company Admin')) {
 
-        $companies = Company::where(
-            'id',
-            auth()->user()->company_id
-        )->get();
+    public function index()
+    {
+        $query = User::with(["company", "department", "roles"]);
 
-    } else {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $query->where("company_id", auth()->user()->company_id);
+        }
 
-        $companies = Company::active()
-            ->orderBy('name')
-            ->get();
-    }
+        if (request("search")) {
+            $search = request("search");
 
-    /*
-    |--------------------------------------------------------------------------
-    | Departments Dropdown
-    |--------------------------------------------------------------------------
-    */
-    if (auth()->user()->hasRole('Company Admin')) {
+            $query->where(function ($q) use ($search) {
+                $q->where("name", "like", "%{$search}%")
 
-        $departments = Department::active()
-            ->where(
-                'company_id',
+                    ->orWhere("email", "like", "%{$search}%")
+
+                    ->orWhereHas("company", function ($company) use ($search) {
+                        $company->where("name", "like", "%{$search}%");
+                    })
+
+                    ->orWhereHas("department", function ($department) use (
+                        $search
+                    ) {
+                        $department->where("name", "like", "%{$search}%");
+                    })
+
+                    ->orWhereHas("roles", function ($role) use ($search) {
+                        $role->where("name", "like", "%{$search}%");
+                    });
+            });
+        }
+
+        if (
+            request("company") &&
+            !auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $query->where("company_id", request("company"));
+        }
+
+        if (request("department")) {
+            $query->where("department_id", request("department"));
+        }
+
+        if (request()->filled("status")) {
+            $query->where("status", request("status"));
+        }
+
+        $users = $query
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Companies
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $companies = Company::where(
+                "id",
                 auth()->user()->company_id
+            )->get();
+        } else {
+            $companies = Company::active()
+                ->orderBy("name")
+                ->get();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Departments
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $departments = Department::active()
+                ->where("company_id", auth()->user()->company_id)
+                ->orderBy("name")
+                ->get();
+        } else {
+            $departments = Department::active()
+                ->orderBy("name")
+                ->get();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Statistics
+        |--------------------------------------------------------------------------
+        */
+
+        $statsQuery = User::query();
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $statsQuery->where("company_id", auth()->user()->company_id);
+        }
+
+        $totalUsers = (clone $statsQuery)->count();
+
+        $activeUsers = (clone $statsQuery)->where("status", 1)->count();
+
+        $inactiveUsers = (clone $statsQuery)->where("status", 0)->count();
+
+        return view(
+            "users.index",
+            compact(
+                "users",
+                "companies",
+                "departments",
+                "totalUsers",
+                "activeUsers",
+                "inactiveUsers"
             )
-            ->orderBy('name')
-            ->get();
-
-    } else {
-
-        $departments = Department::active()
-            ->orderBy('name')
-            ->get();
+        );
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Statistics
+    | Create User Form
     |--------------------------------------------------------------------------
     */
-    if (auth()->user()->hasRole('Company Admin')) {
-
-        $totalUsers = User::where(
-            'company_id',
-            auth()->user()->company_id
-        )->count();
-
-        $activeUsers = User::where(
-            'company_id',
-            auth()->user()->company_id
-        )
-        ->where('status', 1)
-        ->count();
-
-        $inactiveUsers = User::where(
-            'company_id',
-            auth()->user()->company_id
-        )
-        ->where('status', 0)
-        ->count();
-
-    } else {
-
-        $totalUsers = User::count();
-
-        $activeUsers = User::where(
-            'status',
-            1
-        )->count();
-
-        $inactiveUsers = User::where(
-            'status',
-            0
-        )->count();
-    }
-
-    return view(
-        'users.index',
-        compact(
-            'users',
-            'companies',
-            'departments',
-            'totalUsers',
-            'activeUsers',
-            'inactiveUsers'
-        )
-    );
-}
-
-
 
     public function create()
-{
-    if(auth()->user()->hasRole('Company Admin'))
     {
-        $companies = Company::where(
-            'id',
-            auth()->user()->company_id
-        )->get();
+        if (
+            !auth()
+                ->user()
+                ->can("users.create")
+        ) {
+            abort(403);
+        }
 
-        $departments = Department::where(
-            'company_id',
-            auth()->user()->company_id
-        )->get();
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $companies = Company::where(
+                "id",
+                auth()->user()->company_id
+            )->get();
+
+            $departments = Department::active()
+                ->where("company_id", auth()->user()->company_id)
+                ->get();
+        } else {
+            $companies = Company::active()
+                ->orderBy("name")
+                ->get();
+
+            $departments = Department::active()
+                ->orderBy("name")
+                ->get();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Role Access
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
+            $roles = Role::all();
+        } else {
+            $roles = Role::whereNotIn("name", ["Super Admin"])->get();
+        }
+
+        return view(
+            "users.create",
+            compact("companies", "departments", "roles")
+        );
     }
-    else
-    {
-        $companies = Company::where('status',1)
-            ->get();
 
-        $departments = Department::all();
-    }
-
-    $roles = Role::all();
-
-    return view(
-        'users.create',
-        compact(
-            'companies',
-            'departments',
-            'roles'
-        )
-    );
-}
-
-
+    /*
+    |--------------------------------------------------------------------------
+    | Store User
+    |--------------------------------------------------------------------------
+    */
 
     public function store(Request $request)
     {
-
         $validated = $request->validate([
-
-            'name'=>'required',
-            'email'=>'required|email|unique:users',
-            'password'=>'required|min:8',
-
-            'company_id'    => 'required|exists:companies,id',
-            'department_id' => 'nullable|exists:departments,id',
-
-            'role'  => 'required',
-
-            'status'=>'required',
-
-            'profile_photo'=>'nullable|image'
-
+            "name" => "required|string|max:255",
+            "email" => "required|email|unique:users,email",
+            "password" => "required|min:8",
+            "company_id" => "required|exists:companies,id",
+            "department_id" => "nullable|exists:departments,id",
+            "role" => "required|exists:roles,name",
+            "status" => "required|boolean",
+            "profile_photo" => "nullable|image|max:2048",
         ]);
 
+        try {
+            $this->userService->createUser($validated);
 
-        $this->userService
-            ->createUser($validated);
+            return redirect()
+                ->route("users.index")
+                ->with("success", "User created successfully");
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->with("error", $e->getMessage());
+        }
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | Edit User
+    |--------------------------------------------------------------------------
+    */
 
+    public function edit(User $user)
+    {
+        if (
+            !auth()
+                ->user()
+                ->can("users.edit")
+        ) {
+            abort(403);
+        }
 
-        return redirect()
-            ->route('users.index')
-            ->with(
-                'success',
-                'User created successfully'
-            );
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $user->company_id != auth()->user()->company_id
+        ) {
+            abort(403);
+        }
+
+        if (
+            $user->hasRole("Super Admin") &&
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
+            abort(403);
+        }
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $companies = Company::where(
+                "id",
+                auth()->user()->company_id
+            )->get();
+        } else {
+            $companies = Company::active()
+                ->orderBy("name")
+                ->get();
+        }
+
+        $departments = Department::active()
+
+            ->where("company_id", $user->company_id)
+
+            ->orderBy("name")
+
+            ->get();
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
+            $roles = Role::all();
+        } else {
+            $roles = Role::whereNotIn("name", ["Super Admin"])->get();
+        }
+
+        return view(
+            "users.edit",
+            compact("user", "companies", "departments", "roles")
+        );
     }
 
-
-
-public function edit(User $user)
-{
-    if (
-        auth()->user()->hasRole('Company Admin') &&
-        $user->company_id != auth()->user()->company_id
-    ) {
-        abort(403);
-    }
-    $companies = Company::active()->get();
-
-    $departments = Department::where(
-        'company_id',
-        $user->company_id
-    )
-    ->where('status', 1)
-    ->orderBy('name')
-    ->get();
-
-    $roles = Role::all();
-
-    return view(
-        'users.edit',
-        compact(
-            'user',
-            'companies',
-            'departments',
-            'roles'
-        )
-    );
-}
-
-public function getDepartments(Company $company)
-{
-    $departments = Department::active()
-        ->company($company->id)
-        ->select('id', 'name')
-        ->orderBy('name')
-        ->get();
-
-    return response()->json($departments);
-}
+    /*
+    |--------------------------------------------------------------------------
+    | Update User
+    |--------------------------------------------------------------------------
+    */
 
     public function update(Request $request, User $user)
     {
+        if (
+            !auth()
+                ->user()
+                ->can("users.edit")
+        ) {
+            abort(403);
+        }
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $user->company_id != auth()->user()->company_id
+        ) {
+            abort(403);
+        }
+
+        if (
+            $user->hasRole("Super Admin") &&
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
+            abort(403);
+        }
 
         $validated = $request->validate([
-
-            'name'=>'required',
-
-            'email'=>'required|email|
-            unique:users,email,'.$user->id,
-
-            'company_id'    => 'required|exists:companies,id',
-            'department_id' => 'nullable|exists:departments,id',
-
-            'role'  => 'required',
-            'status'=>'required',
-
-            'profile_photo'=>'nullable|image',
-
-            'password'=>'nullable|min:8'
-
+            "name" => "required|string|max:255",
+            "email" => "required|email|unique:users,email," . $user->id,
+            "company_id" => "required|exists:companies,id",
+            "department_id" => "nullable|exists:departments,id",
+            "role" => "required|exists:roles,name",
+            "status" => "required|boolean",
+            "profile_photo" => "nullable|image|max:2048",
+            "password" => "nullable|min:8",
         ]);
 
+        try {
+            $this->userService->updateUser($user, $validated);
 
-        $this->userService
-            ->updateUser(
-                $user,
-                $validated
-            );
-
-
-        return redirect()
-            ->route('users.index')
-            ->with(
-                'success',
-                'User updated successfully'
-            );
+            return redirect()
+                ->route("users.index")
+                ->with("success", "User updated successfully");
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->with("error", $e->getMessage());
+        }
     }
 
-public function show(User $user)
-{
-    $user->load([
-        'company',
-        'department',
-        'roles'
-    ]);
+    /*
+    |--------------------------------------------------------------------------
+    | Get Departments By Company
+    |--------------------------------------------------------------------------
+    */
 
-    return view(
-        'users.show',
-        compact('user')
-    );
-}
+    public function getDepartments(Company $company)
+    {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $company->id != auth()->user()->company_id
+        ) {
+            abort(403);
+        }
+
+        $departments = Department::active()
+            ->where("company_id", $company->id)
+            ->select("id", "name")
+            ->orderBy("name")
+            ->get();
+
+        return response()->json($departments);
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | Show User
+    |--------------------------------------------------------------------------
+    */
+
+    public function show(User $user)
+    {
+        if (
+            !auth()
+                ->user()
+                ->can("users.view")
+        ) {
+            abort(403);
+        }
+
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $user->company_id != auth()->user()->company_id
+        ) {
+            abort(403);
+        }
+
+        if (
+            $user->hasRole("Super Admin") &&
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
+            abort(403);
+        }
+
+        $user->load(["company", "department", "roles"]);
+
+        return view("users.show", compact("user"));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delete User
+    |--------------------------------------------------------------------------
+    */
 
     public function destroy(User $user)
     {
+        if (
+            !auth()
+                ->user()
+                ->can("users.delete")
+        ) {
+            abort(403);
+        }
 
-        $this->userService
-            ->deleteUser($user);
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $user->company_id != auth()->user()->company_id
+        ) {
+            abort(403);
+        }
 
+        if (
+            $user->hasRole("Super Admin") &&
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
+            abort(403);
+        }
 
-        return redirect()
-            ->route('users.index')
-            ->with(
-                'success',
-                'User deleted successfully'
-            );
+        try {
+            $this->userService->deleteUser($user);
+
+            return redirect()
+                ->route("users.index")
+                ->with("success", "User deleted successfully");
+        } catch (\Exception $e) {
+            return back()->with("error", $e->getMessage());
+        }
     }
+    /*
+    |--------------------------------------------------------------------------
+    | Toggle User Status
+    |--------------------------------------------------------------------------
+    */
 
     public function toggleStatus(User $user)
-{
-    $user->status = !$user->status;
-    $user->save();
-
-
-    activity()
-        ->causedBy(Auth::user())
-        ->performedOn($user)
-        ->log(
-            $user->status
-                ? 'User activated successfully'
-                : 'User deactivated successfully'
-        );
-
-
-    return response()->json([
-        'success' => true,
-        'status' => $user->status,
-        'message' => $user->status
-            ? 'User activated successfully'
-            : 'User deactivated successfully'
-    ]);
-}
-
-public function bulkAction(Request $request)
-{
-    $request->validate([
-        'action'=>'required|in:activate,deactivate,delete',
-        'ids'=>'required|array|min:1'
-    ]);
-
-
-    switch($request->action)
     {
+        if (
+            !auth()
+                ->user()
+                ->can("users.edit")
+        ) {
+            return response()->json(
+                [
+                    "success" => false,
 
-        case 'activate':
+                    "message" => "Permission denied.",
+                ],
+                403
+            );
+        }
 
-            User::whereIn('id',$request->ids)
-            ->where('status',0)
-            ->update([
-                'status'=>1
+        try {
+            $result = $this->userService->toggleStatus($user);
+
+            return response()->json([
+                "success" => true,
+
+                "status" => $result->status,
+
+                "message" => $result->status
+                    ? "User activated successfully"
+                    : "User deactivated successfully",
             ]);
+        } catch (\Exception $e) {
+            return response()->json(
+                [
+                    "success" => false,
 
-        break;
-
-
-        case 'deactivate':
-
-            User::whereIn('id',$request->ids)
-            ->where('status',1)
-            ->update([
-                'status'=>0
-            ]);
-
-        break;
-
-
-        case 'delete':
-
-            User::whereIn('id',$request->ids)
-            ->delete();
-
-        break;
-
+                    "message" => $e->getMessage(),
+                ],
+                403
+            );
+        }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bulk Action
+    |--------------------------------------------------------------------------
+    */
 
-    return response()->json([
-        'success'=>true,
-        'message'=>'Action completed successfully.'
-    ]);
-}
+    public function bulkAction(Request $request)
+    {
+        $validated = $request->validate([
+            "action" => "required|in:activate,deactivate,delete",
 
-//Export Users
-public function export()
-{
-    activity()
-        ->causedBy(auth()->user())
-        ->log('Users Exported');
+            "ids" => "required|array|min:1",
 
-    return Excel::download(
-        new UsersExport(),
-        'users.xlsx'
-    );
-}
-//import Users
-public function import(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls,csv'
-    ]);
+            "ids.*" => "exists:users,id",
+        ]);
 
+        try {
+            $this->userService->bulkAction($validated);
 
-    $import = new UsersImport();
+            return response()->json([
+                "success" => true,
 
+                "message" => "Action completed successfully.",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(
+                [
+                    "success" => false,
 
-    Excel::import(
-        $import,
-        $request->file('file')
-    );
+                    "message" => $e->getMessage(),
+                ],
+                403
+            );
+        }
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Export Users
+    |--------------------------------------------------------------------------
+    */
 
-    activity()
-        ->causedBy(auth()->user())
-        ->log('Users Imported');
+    public function export()
+    {
+        if (
+            !auth()
+                ->user()
+                ->can("users.export")
+        ) {
+            abort(403);
+        }
 
+        activity()
+            ->causedBy(auth()->user())
 
-    return back()->with(
-        'success',
-        $import->imported .
-        ' users imported successfully. ' .
-        $import->skipped .
-        ' duplicate/invalid entries skipped.'
-    );
-}
+            ->withProperties([
+                "module" => "User",
+
+                "action" => "export",
+            ])
+
+            ->log("Users exported");
+
+        return Excel::download(
+            new UsersExport(),
+
+            "users.xlsx"
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Import Users
+    |--------------------------------------------------------------------------
+    */
+
+    public function import(Request $request)
+    {
+        if (
+            !auth()
+                ->user()
+                ->can("users.import")
+        ) {
+            abort(403);
+        }
+
+        $request->validate([
+            "file" => "required|mimes:xlsx,xls,csv",
+        ]);
+
+        try {
+            $import = new UsersImport();
+
+            Excel::import(
+                $import,
+
+                $request->file("file")
+            );
+
+            activity()
+                ->causedBy(auth()->user())
+
+                ->withProperties([
+                    "module" => "User",
+
+                    "action" => "import",
+
+                    "imported" => $import->imported,
+
+                    "skipped" => $import->skipped,
+                ])
+
+                ->log("Users imported");
+
+            return back()->with(
+                "success",
+
+                $import->imported .
+                    " users imported successfully. " .
+                    $import->skipped .
+                    " duplicate/invalid entries skipped."
+            );
+        } catch (\Exception $e) {
+            return back()->with(
+                "error",
+
+                $e->getMessage()
+            );
+        }
+    }
 }

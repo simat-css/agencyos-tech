@@ -15,83 +15,99 @@ class AIController extends Controller
         CompanyAIService $companyAIService,
         DepartmentAIService $departmentAIService
     ) {
-
         $this->companyAIService = $companyAIService;
         $this->departmentAIService = $departmentAIService;
-
     }
 
     public function execute(Request $request)
-    {
-        $request->validate([
-            'command' => 'required|string|max:1000'
-        ]);
+{
+    $request->validate([
+        'command' => 'required|string|max:1000',
+    ]);
 
-        $command = strtolower(
-            trim($request->command)
-        );
+    $command = strtolower(trim($request->command));
 
-        /*
-        |--------------------------------------------------------------------------
-        | Pending Department Confirmations
-        |--------------------------------------------------------------------------
-        */
-if (
-    $command === 'confirm'
-    &&
-    (
-        session()->has('pending_department_update')
-        ||
-        session()->has('pending_department_delete')
-        ||
-        session()->has('pending_department_status_update')
-    )
-) {
 
-    $result =
-        $this->departmentAIService->process(
-            $request->command
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | CONFIRM ACTIONS
+    |--------------------------------------------------------------------------
+    */
 
-}
+    if ($command === 'confirm') {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Department Commands
-        |--------------------------------------------------------------------------
-        */
 
-        elseif (
-            str_contains(
-                $command,
-                'department'
-            )
+        // Company Pending Actions First
+        if (
+            session()->has('pending_company_delete') ||
+            session()->has('pending_company_update') ||
+            session()->has('pending_company_activate') ||
+            session()->has('pending_company_deactivate')||
+            session()->has('pending_company_restore')
         ) {
 
-            $result =
-                $this->departmentAIService->process(
-                    $request->command
-                );
+            $result = $this->companyAIService
+                ->process($request->command);
 
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Company Commands
-        |--------------------------------------------------------------------------
-        */
+
+        // Department Pending Actions
+        elseif (
+            session()->has('pending_department_update') ||
+            session()->has('pending_department_delete') ||
+            session()->has('pending_department_status_update')
+        ) {
+
+            $result = $this->departmentAIService
+                ->process($request->command);
+
+        }
+
 
         else {
 
-            $result =
-                $this->companyAIService->process(
-                    $request->command
-                );
+            $result = [
+                'success' => false,
+                'message' => 'No pending action found.'
+            ];
 
         }
 
-        return response()->json(
-            $result
-        );
+
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DEPARTMENT COMMANDS
+    |--------------------------------------------------------------------------
+    */
+
+    elseif (
+        str_contains($command, 'department')
+    ) {
+
+        $result = $this->departmentAIService
+            ->process($request->command);
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | COMPANY COMMANDS
+    |--------------------------------------------------------------------------
+    */
+
+    else {
+
+        $result = $this->companyAIService
+            ->process($request->command);
+
+    }
+
+
+    return response()->json($result);
+}
 }

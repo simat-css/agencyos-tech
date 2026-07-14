@@ -350,8 +350,12 @@
                         <td>
 
     <form
-        action="{{ route('companies.toggle-status',$company) }}"
-        method="POST">
+    action="{{ route('companies.toggle-status',$company) }}"
+    method="POST"
+    class="company-status-form"
+    data-company="{{ $company->name }}"
+    data-status="{{ $company->status ? 'active' : 'inactive' }}"
+    data-departments="{{ $company->departments()->where('status',1)->count() }}">
 
         @csrf
         @method('PATCH')
@@ -684,6 +688,68 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
+
+//company statuswarning
+document.querySelectorAll('.company-status-form')
+.forEach(form => {
+
+    form.addEventListener('submit', function (e) {
+
+        const currentStatus =
+            this.dataset.status;
+
+        const companyName =
+            this.dataset.company;
+
+        const activeDepartments =
+            parseInt(this.dataset.departments);
+
+        if (currentStatus !== 'active') {
+            return;
+        }
+
+        e.preventDefault();
+
+        let warningMessage =
+            `Company "${companyName}" will be deactivated.`;
+
+        if (activeDepartments > 0) {
+
+            warningMessage +=
+                `\n\n${activeDepartments} active department(s) will also be automatically deactivated.`;
+
+        }
+
+        warningMessage +=
+            '\n\nDo you want to continue?';
+
+        Swal.fire({
+
+            icon: 'warning',
+
+            title: 'Deactivate Company?',
+
+            text: warningMessage,
+
+            showCancelButton: true,
+
+            confirmButtonText: 'Yes, Deactivate',
+
+            cancelButtonText: 'Cancel'
+
+        }).then((result) => {
+
+            if (result.isConfirmed) {
+
+                form.submit();
+
+            }
+
+        });
+
+    });
+
+});
 </script>
 
 @endpush
