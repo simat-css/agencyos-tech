@@ -279,14 +279,13 @@ public function findByNameAndCompany(
     string $departmentName,
     int $companyId
 ) {
-    return Department::where(
-        'company_id',
-        $companyId
-    )
-    ->where(
-        'name',
-        $departmentName
-    )
-    ->first();
+    return Department::where('company_id', $companyId)
+        ->whereRaw(
+            'LOWER(TRIM(name)) = ?',
+            [
+                strtolower(trim($departmentName))
+            ]
+        )
+        ->first();
 }
 }

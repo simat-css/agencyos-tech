@@ -95,6 +95,7 @@ class RoleSeeder extends Seeder
 
         'users.activate',
         'users.deactivate',
+        'users.restore',
 
         'users.import',
         'users.export',

@@ -68,6 +68,7 @@ class PermissionSeeder extends Seeder
 
             'users.profile.view',
             'users.profile.edit',
+            'users.restore',
 
             /*
             |--------------------------------------------------------------------------

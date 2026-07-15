@@ -8,6 +8,9 @@ use App\Helpers\ActivityHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Company;
+use App\Models\Department;
+use Spatie\Permission\Models\Role;
 
 class UserService
 {
@@ -25,6 +28,28 @@ class UserService
             throw new \Exception("You do not have permission to create users.");
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | Company Validation
+    |--------------------------------------------------------------------------
+    */
+
+        $company = Company::find($data["company_id"]);
+
+        if (!$company) {
+            throw new \Exception("Company not found.");
+        }
+
+        if (!$company->status) {
+            throw new \Exception("Selected company is inactive.");
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Company Admin Restriction
+    |--------------------------------------------------------------------------
+    */
+
         if (
             $authUser->hasRole("Company Admin") &&
             $data["company_id"] != $authUser->company_id
@@ -33,6 +58,12 @@ class UserService
                 "You cannot create users for another company."
             );
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Role Validation
+    |--------------------------------------------------------------------------
+    */
 
         $role = $data["role"] ?? null;
 
@@ -48,6 +79,12 @@ class UserService
             );
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | Profile Photo Upload
+    |--------------------------------------------------------------------------
+    */
+
         if (isset($data["profile_photo"])) {
             $data["profile_photo"] = $data["profile_photo"]->store(
                 "users",
@@ -55,21 +92,47 @@ class UserService
             );
         }
 
-        if (!empty($data["department_id"])) {
-            $department = \App\Models\Department::find($data["department_id"]);
+        /*
+    |--------------------------------------------------------------------------
+    | Department Validation
+    |--------------------------------------------------------------------------
+    */
 
-            if ($department && $department->company_id != $data["company_id"]) {
+        if (!empty($data["department_id"])) {
+            $department = Department::find($data["department_id"]);
+
+            if (!$department) {
+                throw new \Exception("Department not found.");
+            }
+
+            if ($department->company_id != $data["company_id"]) {
                 throw new \Exception(
                     "Selected department does not belong to selected company."
                 );
             }
+
+            if (!$department->status) {
+                throw new \Exception("Selected department is inactive.");
+            }
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Password Validation
+    |--------------------------------------------------------------------------
+    */
 
         if (empty($data["password"])) {
             throw new \Exception("Password is required.");
         }
 
         $data["password"] = Hash::make($data["password"]);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Create User Transaction
+    |--------------------------------------------------------------------------
+    */
 
         $user = DB::transaction(function () use ($data, $role, $authUser) {
             $user = User::create($data);
@@ -98,6 +161,12 @@ class UserService
 
             return $user;
         });
+
+        /*
+    |--------------------------------------------------------------------------
+    | Notification
+    |--------------------------------------------------------------------------
+    */
 
         $user->notify(
             new UserActionNotification(
@@ -571,5 +640,76 @@ class UserService
         });
 
         return true;
+    }
+
+    //AI Part
+    public function emailExists(string $email): bool
+    {
+        return User::where("email", $email)->exists();
+    }
+    public function findUserByEmail(string $email)
+    {
+        return User::where("email", $email)->first();
+    }
+    public function emailExistsForOtherUser(string $email, int $userId): bool
+    {
+        return User::where("email", $email)
+            ->where("id", "!=", $userId)
+            ->exists();
+    }
+    public function findCompany(string $name)
+    {
+        return Company::where("name", "like", "%{$name}%")->first();
+    }
+    public function findDepartment(int $companyId, string $name)
+    {
+        return Department::where("company_id", $companyId)
+            ->where("name", "like", "%{$name}%")
+            ->first();
+    }
+    public function findRole(string $role)
+    {
+        return Role::where("name", $role)->first();
+    }
+    public function findUserById(int $id)
+    {
+        return User::find($id);
+    }
+    public function getUsersByStatus(int $status, ?int $companyId = null)
+    {
+        return User::with(["company", "department", "roles"])
+            ->when(
+                $companyId,
+                fn($query) => $query->where("company_id", $companyId)
+            )
+            ->where("status", $status)
+            ->orderBy("name")
+            ->get();
+    }
+    public function findDeletedUserByEmail(string $email)
+    {
+        return User::onlyTrashed()
+            ->where("email", $email)
+            ->first();
+    }
+    public function restoreUser(User $user): bool
+    {
+        return $user->restore();
+    }
+
+    public function findDeletedUsers(?int $companyId = null)
+    {
+        return User::onlyTrashed()
+            ->when(
+                $companyId,
+                fn($query) => $query->where("company_id", $companyId)
+            )
+            ->with(["company", "department", "roles"])
+            ->orderBy("name")
+            ->get();
+    }
+    public function findDeletedUserById(int $id)
+    {
+        return User::withTrashed()->find($id);
     }
 }
