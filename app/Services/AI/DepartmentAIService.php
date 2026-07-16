@@ -11,182 +11,95 @@ class DepartmentAIService
 {
     protected DepartmentService $departmentService;
 
-    public function __construct(
-        DepartmentService $departmentService
-    ) {
+    public function __construct(DepartmentService $departmentService)
+    {
         $this->departmentService = $departmentService;
     }
 
-    public function process(
-        string $command
-    ): array {
-
+    public function process(string $command): array
+    {
         $command = trim($command);
 
-        if (
-            str_contains(
-                strtolower($command),
-                'create department'
-            )
-        ) {
-            return $this->handleCreateDepartment(
-                $command
-            );
+        if (str_contains(strtolower($command), "create department")) {
+            return $this->handleCreateDepartment($command);
         }
 
+        if (str_starts_with(strtolower($command), "update department")) {
+            return $this->requestDepartmentUpdateConfirmation($command);
+        }
+
+        //delete department
+        if (str_starts_with(strtolower($command), "delete department")) {
+            return $this->requestDepartmentDeleteConfirmation($command);
+        }
+        //restore department
+
+        if (str_starts_with(strtolower($command), "restore department")) {
+            return $this->requestDepartmentRestoreConfirmation($command);
+        }
+        //activate department
+
+        if (str_starts_with(strtolower($command), "activate department")) {
+            return $this->requestDepartmentStatusConfirmation($command, 1);
+        }
+
+        //deactivate department
+
+        if (str_starts_with(strtolower($command), "deactivate department")) {
+            return $this->requestDepartmentStatusConfirmation($command, 0);
+        }
+
+        //show department
+
+        if (str_starts_with(strtolower($command), "show department")) {
+            return $this->showDepartmentDetails($command);
+        }
+
+        //search department
+
+        if (str_starts_with(strtolower($command), "search department")) {
+            return $this->searchDepartments($command);
+        }
+        //list departments
+
         if (
-    str_starts_with(
-        strtolower($command),
-        'update department'
-    )
-) {
-    return $this->requestDepartmentUpdateConfirmation(
-        $command
-    );
-}
+            str_starts_with(strtolower($command), "list department") ||
+            str_starts_with(strtolower($command), "list departments")
+        ) {
+            return $this->listDepartments($command);
+        }
 
-//delete department
-if (
-    str_starts_with(
-        strtolower($command),
-        'delete department'
-    )
-) {
-    return $this->requestDepartmentDeleteConfirmation(
-        $command
-    );
-}
+        //confirm
+        if (strtolower($command) === "confirm") {
+            if (session()->has("pending_department_update")) {
+                return $this->confirmDepartmentUpdate($command);
+            }
 
-//activate department
+            if (session()->has("pending_department_delete")) {
+                return $this->confirmDepartmentDelete($command);
+            }
+            if (session()->has("pending_department_restore")) {
+                return $this->confirmDepartmentRestore($command);
+            }
 
-if (
-    str_starts_with(
-        strtolower($command),
-        'activate department'
-    )
-) {
+            if (session()->has("pending_department_status_update")) {
+                return $this->confirmDepartmentStatusUpdate($command);
+            }
 
-    return $this->requestDepartmentStatusConfirmation(
-        $command,
-        1
-    );
-
-}
-
-//deactivate department
-
-if (
-    str_starts_with(
-        strtolower($command),
-        'deactivate department'
-    )
-) {
-
-    return $this->requestDepartmentStatusConfirmation(
-        $command,
-        0
-    );
-
-}
-
-//show department
-
-if (
-    str_starts_with(
-        strtolower($command),
-        'show department'
-    )
-) {
-
-    return $this->showDepartmentDetails(
-        $command
-    );
-
-}
-
-//search department
-
-if (
-    str_starts_with(
-        strtolower($command),
-        'search department'
-    )
-) {
-
-    return $this->searchDepartments(
-        $command
-    );
-
-}
-//list departments
-
-if (
-    str_starts_with(strtolower($command), 'list department')
-    ||
-    str_starts_with(strtolower($command), 'list departments')
-) {
-
-    return $this->listDepartments(
-        $command
-    );
-
-}
-
-//confirm
-if (
-    strtolower($command) === 'confirm'
-) {
-
-    if (
-        session()->has(
-            'pending_department_update'
-        )
-    ) {
-        return $this->confirmDepartmentUpdate(
-            $command
-        );
-    }
-
-    if (
-        session()->has(
-            'pending_department_delete'
-        )
-    ) {
-        return $this->confirmDepartmentDelete(
-            $command
-        );
-    }
-
-    if (
-    session()->has(
-        'pending_department_status_update'
-    )
-) {
-
-    return $this->confirmDepartmentStatusUpdate(
-        $command
-    );
-
-}
-
-    return [
-        'success' => false,
-        'message' =>
-            'No pending department action found.'
-    ];
-}
+            return [
+                "success" => false,
+                "message" => "No pending department action found.",
+            ];
+        }
 
         return [
-            'success' => false,
-            'message' =>
-                'Department command not recognized.'
+            "success" => false,
+            "message" => "Department command not recognized.",
         ];
     }
 
-    private function handleCreateDepartment(
-        string $command
-    ): array {
-
+    private function handleCreateDepartment(string $command): array
+    {
         /*
         |--------------------------------------------------------------------------
         | Permission Validation
@@ -194,17 +107,15 @@ if (
         */
 
         if (
-            !auth()->check()
-            ||
-            !auth()->user()->can(
-                'departments.create'
-            )
+            !auth()->check() ||
+            !auth()
+                ->user()
+                ->can("departments.create")
         ) {
-
             return [
-                'success' => false,
-                'message' =>
-                    'You do not have permission to create departments.'
+                "success" => false,
+                "message" =>
+                    "You do not have permission to create departments.",
             ];
         }
 
@@ -214,10 +125,7 @@ if (
         |--------------------------------------------------------------------------
         */
 
-        $data =
-            $this->parseCreateDepartment(
-                $command
-            );
+        $data = $this->parseCreateDepartment($command);
 
         /*
         |--------------------------------------------------------------------------
@@ -226,17 +134,13 @@ if (
         */
 
         if (
-            empty($data['name'])
-            ||
-            empty($data['company_name'])
-            ||
-            empty($data['code'])
+            empty($data["name"]) ||
+            empty($data["company_name"]) ||
+            empty($data["code"])
         ) {
-
             return [
-                'success' => false,
-                'message' =>
-                    'Department name, company and code are required.'
+                "success" => false,
+                "message" => "Department name, company and code are required.",
             ];
         }
 
@@ -247,19 +151,15 @@ if (
         */
 
         $company = Company::where(
-            'name',
-            'like',
-            '%' .
-            $data['company_name']
-            . '%'
+            "name",
+            "like",
+            "%" . $data["company_name"] . "%"
         )->first();
 
         if (!$company) {
-
             return [
-                'success' => false,
-                'message' =>
-                    'Company not found.'
+                "success" => false,
+                "message" => "Company not found.",
             ];
         }
 
@@ -270,11 +170,9 @@ if (
         */
 
         if (!$company->status) {
-
             return [
-                'success' => false,
-                'message' =>
-                    'Cannot create department under inactive company.'
+                "success" => false,
+                "message" => "Cannot create department under inactive company.",
             ];
         }
 
@@ -285,19 +183,15 @@ if (
         */
 
         if (
-            auth()->user()->hasRole(
-                'Company Admin'
-            )
-            &&
-            auth()->user()->company_id
-            !=
-            $company->id
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            auth()->user()->company_id != $company->id
         ) {
-
             return [
-                'success' => false,
-                'message' =>
-                    'You can only manage departments of your own company.'
+                "success" => false,
+                "message" =>
+                    "You can only manage departments of your own company.",
             ];
         }
 
@@ -307,18 +201,10 @@ if (
         |--------------------------------------------------------------------------
         */
 
-        if (
-            $this->departmentService
-                ->codeExists(
-                    $data['code'],
-                    $company->id
-                )
-        ) {
-
+        if ($this->departmentService->codeExists($data["code"], $company->id)) {
             return [
-                'success' => false,
-                'message' =>
-                    'Department code already exists.'
+                "success" => false,
+                "message" => "Department code already exists.",
             ];
         }
 
@@ -328,19 +214,28 @@ if (
         |--------------------------------------------------------------------------
         */
 
-        $existingDepartment =
-            $this->departmentService
-                ->findByName(
-                    $data['name'],
-                    $company->id
-                );
+        $existingDepartment = $this->departmentService->findByName(
+            $data["name"],
+            $company->id
+        );
 
         if ($existingDepartment) {
-
             return [
-                'success' => false,
-                'message' =>
-                    'Department name already exists in this company.'
+                "success" => false,
+                "message" => "Department name already exists in this company.",
+            ];
+        }
+
+        $deletedDepartment = $this->departmentService->findDeletedDepartment(
+            $data["name"],
+            $company->id
+        );
+
+        if ($deletedDepartment) {
+            return [
+                "success" => false,
+                "message" =>
+                    "Department exists in deleted state. Please restore it instead of creating a new one.",
             ];
         }
 
@@ -351,24 +246,18 @@ if (
         */
 
         $departmentData = [
+            "company_id" => $company->id,
 
-            'company_id' => $company->id,
+            "name" => $data["name"],
 
-            'name' => $data['name'],
+            "code" => $data["code"],
 
-            'code' => $data['code'],
+            "description" => $data["description"] ?? null,
 
-            'description' =>
-                $data['description'] ?? null,
-
-            'status' => 1,
-
+            "status" => 1,
         ];
 
-        $department =
-            $this->departmentService->create(
-                $departmentData
-            );
+        $department = $this->departmentService->create($departmentData);
 
         /*
         |--------------------------------------------------------------------------
@@ -380,38 +269,25 @@ if (
             ->causedBy(auth()->user())
             ->performedOn($department)
             ->withProperties([
+                "user_id" => auth()->id(),
 
-                'user_id' =>
-                    auth()->id(),
+                "module" => "Departments",
 
-                'module' =>
-                    'Departments',
+                "action" => "Create",
 
-                'action' =>
-                    'Create',
+                "old_values" => null,
 
-                'old_values' =>
-                    null,
+                "new_values" => $department->toArray(),
 
-                'new_values' =>
-                    $department->toArray(),
+                "ip_address" => request()->ip(),
 
-                'ip_address' =>
-                    request()->ip(),
+                "browser" => request()->userAgent(),
 
-                'browser' =>
-                    request()->userAgent(),
+                "source" => "AI Assistant",
 
-                'source' =>
-                    'AI Assistant',
-
-                'command' =>
-                    $command,
-
+                "command" => $command,
             ])
-            ->log(
-                'Department created via AI Assistant'
-            );
+            ->log("Department created via AI Assistant");
 
         /*
         |--------------------------------------------------------------------------
@@ -419,15 +295,13 @@ if (
         |--------------------------------------------------------------------------
         */
 
-        auth()->user()->notify(
-
-            new DepartmentActionNotification(
-
-                "Department {$department->name} created successfully."
-
-            )
-
-        );
+        auth()
+            ->user()
+            ->notify(
+                new DepartmentActionNotification(
+                    "Department {$department->name} created successfully."
+                )
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -436,2004 +310,1535 @@ if (
         */
 
         return [
+            "success" => true,
 
-            'success' => true,
-
-            'message' =>
-
-                "Department {$department->name} has been created successfully."
-
+            "message" => "Department {$department->name} has been created successfully.",
         ];
     }
 
-    private function requestDepartmentUpdateConfirmation(
-    string $command
-): array {
-
-    /*
+    private function requestDepartmentUpdateConfirmation(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !$this->hasDepartmentPermission(
-            'departments.edit'
-        )
-    ) {
+        if (!$this->hasDepartmentPermission("departments.edit")) {
+            return [
+                "success" => false,
+                "message" =>
+                    "You do not have permission to update departments.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission to update departments.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Parse Department + Company
     |--------------------------------------------------------------------------
     */
 
-    $data =
-        $this->parseUpdateDepartmentCommand(
-            $command
-        );
+        $data = $this->parseUpdateDepartmentCommand($command);
 
-    $departmentName =
-        $data['department_name'];
+        $departmentName = $data["department_name"];
 
-    $companyName =
-        $data['company_name'];
+        $companyName = $data["company_name"];
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !$departmentName
-        ||
-        !$companyName
-    ) {
+        if (!$departmentName || !$companyName) {
+            return [
+                "success" => false,
+                "message" => "Department name and company name are required.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'Department name and company name are required.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Company
     |--------------------------------------------------------------------------
     */
 
-    $company = Company::where(
-        'name',
-        'like',
-        '%'.$companyName.'%'
-    )->first();
+        $company = Company::where(
+            "name",
+            "like",
+            "%" . $companyName . "%"
+        )->first();
 
-    if (!$company) {
+        if (!$company) {
+            return [
+                "success" => false,
+                "message" => "Company not found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'Company not found.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findByName(
-                $departmentName,
-                $company->id
-            );
+        $department = $this->departmentService->findByName(
+            $departmentName,
+            $company->id
+        );
 
-    if (!$department) {
+        if (!$department) {
+            return [
+                "success" => false,
+                "message" => "Department {$departmentName} not found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                "Department {$departmentName} not found."
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Access Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !$this->checkDepartmentCompanyAccess(
-            $department
-        )
-    ) {
+        if (!$this->checkDepartmentCompanyAccess($department)) {
+            return [
+                "success" => false,
+                "message" => "You cannot access another company department.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You cannot access another company department.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Extract Changes
     |--------------------------------------------------------------------------
     */
 
-    $changes = [];
+        $changes = [];
 
-    if (
-        preg_match(
-            '/name\s+(.*?)(?:\s+code|\s+description|$)/i',
-            $command,
-            $name
-        )
-    ) {
+        if (
+            preg_match(
+                '/name\s+(.*?)(?:\s+code|\s+description|$)/i',
+                $command,
+                $name
+            )
+        ) {
+            $changes["name"] = trim($name[1]);
+        }
 
-        $changes['name'] =
-            trim($name[1]);
+        if (preg_match("/code\s+([a-zA-Z0-9_-]+)/i", $command, $code)) {
+            $changes["code"] = trim($code[1]);
+        }
 
-    }
+        if (preg_match('/description\s+(.*)$/i', $command, $description)) {
+            $changes["description"] = trim($description[1]);
+        }
 
-    if (
-        preg_match(
-            '/code\s+([a-zA-Z0-9_-]+)/i',
-            $command,
-            $code
-        )
-    ) {
-
-        $changes['code'] =
-            trim($code[1]);
-
-    }
-
-    if (
-        preg_match(
-            '/description\s+(.*)$/i',
-            $command,
-            $description
-        )
-    ) {
-
-        $changes['description'] =
-            trim($description[1]);
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Validate Changes
     |--------------------------------------------------------------------------
     */
 
-    if (empty($changes)) {
+        if (empty($changes)) {
+            return [
+                "success" => false,
+                "message" => "No update information found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'No update information found.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Store Pending Request
     |--------------------------------------------------------------------------
     */
 
-    session([
+        session([
+            "pending_department_update" => [
+                "department_id" => $department->id,
 
-        'pending_department_update' => [
+                "changes" => $changes,
+            ],
+        ]);
 
-            'department_id' =>
-                $department->id,
-
-            'changes' =>
-                $changes
-
-        ]
-
-    ]);
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Confirmation Message
     |--------------------------------------------------------------------------
     */
 
-    $message =
-        "⚠️ UPDATE DEPARTMENT CONFIRMATION\n\n".
-        "Department: {$department->name}\n".
-        "Company: ".($department->company->name ?? 'N/A')."\n".
-        "Department Code: ".($department->code ?? 'N/A')."\n\n".
-        "Changes:\n";
+        $message =
+            "⚠️ UPDATE DEPARTMENT CONFIRMATION\n\n" .
+            "Department: {$department->name}\n" .
+            "Company: " .
+            ($department->company->name ?? "N/A") .
+            "\n" .
+            "Department Code: " .
+            ($department->code ?? "N/A") .
+            "\n\n" .
+            "Changes:\n";
 
-    foreach (
-        $changes as $key => $value
-    ) {
+        foreach ($changes as $key => $value) {
+            $message .= ucfirst($key) . " → " . $value . "\n";
+        }
 
-        $message .=
-            ucfirst($key)
-            ." → "
-            .$value
-            ."\n";
+        $message .= "\nType confirm to continue.";
 
+        return [
+            "success" => true,
+
+            "message" => $message,
+        ];
     }
-
-    $message .=
-        "\nType confirm to continue.";
-
-    return [
-
-        'success' => true,
-
-        'message' => $message
-
-    ];
-
-}
-private function confirmDepartmentUpdate(
-    string $command
-): array {
-
-    /*
+    private function confirmDepartmentUpdate(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !auth()->check()
-        ||
-        !auth()->user()->can(
-            'departments.edit'
-        )
-    ) {
+        if (
+            !auth()->check() ||
+            !auth()
+                ->user()
+                ->can("departments.edit")
+        ) {
+            return [
+                "success" => false,
+                "message" => "You do not have permission.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Pending Request Validation
     |--------------------------------------------------------------------------
     */
 
-    $pending = session(
-        'pending_department_update'
-    );
+        $pending = session("pending_department_update");
 
-    if (!$pending) {
+        if (!$pending) {
+            return [
+                "success" => false,
+                "message" => "No pending department update request found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'No pending department update request found.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findById(
-                $pending['department_id']
-            );
-
-    if (!$department) {
-
-        session()->forget(
-            'pending_department_update'
+        $department = $this->departmentService->findById(
+            $pending["department_id"]
         );
 
-        return [
-            'success' => false,
-            'message' =>
-                'Department not found.'
-        ];
+        if (!$department) {
+            session()->forget("pending_department_update");
 
-    }
+            return [
+                "success" => false,
+                "message" => "Department not found.",
+            ];
+        }
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole(
-            'Company Admin'
-        )
-        &&
-        $department->company_id
-        !=
-        auth()->user()->company_id
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $department->company_id != auth()->user()->company_id
+        ) {
+            return [
+                "success" => false,
+                "message" => "You cannot update another company department.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You cannot update another company department.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Duplicate Department Name Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        isset(
-            $pending['changes']['name']
-        )
-    ) {
+        if (isset($pending["changes"]["name"])) {
+            $existingDepartment = $this->departmentService->findByName(
+                $pending["changes"]["name"],
+                $department->company_id
+            );
 
-        $existingDepartment =
-            $this->departmentService
-                ->findByName(
-                    $pending['changes']['name'],
-                    $department->company_id
-                );
+            if (
+                $existingDepartment &&
+                $existingDepartment->id != $department->id
+            ) {
+                session()->forget("pending_department_update");
 
-        if ($existingDepartment && $existingDepartment->id != $department->id) {
+                return [
+                    "success" => false,
+                    "message" => "Department name already exists.",
+                ];
+            }
+        }
 
-    session()->forget(
-        'pending_department_update'
-    );
-
-    return [
-        'success' => false,
-        'message' => 'Department name already exists.'
-    ];
-
-}
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Duplicate Department Code Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        isset(
-            $pending['changes']['code']
-        )
-    ) {
+        if (isset($pending["changes"]["code"])) {
+            if (
+                $this->departmentService->codeExists(
+                    $pending["changes"]["code"],
+                    $department->company_id,
+                    $department->id
+                )
+            ) {
+                session()->forget("pending_department_update");
 
-       if (
-    $this->departmentService
-        ->codeExists(
-            $pending['changes']['code'],
-            $department->company_id,
-            $department->id
-        )
-) {
+                return [
+                    "success" => false,
+                    "message" => "Department code already exists.",
+                ];
+            }
+        }
 
-    session()->forget(
-        'pending_department_update'
-    );
-
-    return [
-        'success' => false,
-        'message' => 'Department code already exists.'
-    ];
-
-}
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Store Old Values
     |--------------------------------------------------------------------------
     */
 
-    $oldValues =
-        $department->toArray();
+        $oldValues = $department->toArray();
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Update Department
     |--------------------------------------------------------------------------
     */
 
-    $updatedDepartment =
-        $this->departmentService
-            ->update(
-                $department,
-                $pending['changes']
-            );
+        $updatedDepartment = $this->departmentService->update(
+            $department,
+            $pending["changes"]
+        );
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Activity Log
     |--------------------------------------------------------------------------
     */
 
-    activity()
-        ->causedBy(auth()->user())
-        ->performedOn($updatedDepartment)
-        ->withProperties([
+        activity()
+            ->causedBy(auth()->user())
+            ->performedOn($updatedDepartment)
+            ->withProperties([
+                "user_id" => auth()->id(),
 
-            'user_id' =>
-                auth()->id(),
+                "module" => "Departments",
 
-            'module' =>
-                'Departments',
+                "action" => "Update",
 
-            'action' =>
-                'Update',
+                "old_values" => $oldValues,
 
-            'old_values' =>
-                $oldValues,
+                "new_values" => $updatedDepartment->fresh()->toArray(),
 
-            'new_values' =>
-    $updatedDepartment->fresh()->toArray(),
+                "ip_address" => request()->ip(),
 
-            'ip_address' =>
-                request()->ip(),
+                "browser" => request()->userAgent(),
 
-            'browser' =>
-                request()->userAgent(),
+                "source" => "AI Assistant",
 
-            'source' =>
-                'AI Assistant',
+                "command" => $command,
+            ])
+            ->log("Department updated via AI Assistant");
 
-            'command' =>
-                $command,
-
-        ])
-        ->log(
-            'Department updated via AI Assistant'
-        );
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Notification
     |--------------------------------------------------------------------------
     */
 
-    auth()->user()->notify(
+        auth()
+            ->user()
+            ->notify(
+                new DepartmentActionNotification(
+                    "Department {$updatedDepartment->name} updated successfully."
+                )
+            );
 
-        new DepartmentActionNotification(
-
-            "Department {$updatedDepartment->name} updated successfully."
-
-        )
-
-    );
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Clear Pending Session
     |--------------------------------------------------------------------------
     */
 
-    session()->forget(
-        'pending_department_update'
-    );
+        session()->forget("pending_department_update");
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Response
     |--------------------------------------------------------------------------
     */
 
-    return [
+        return [
+            "success" => true,
 
-        'success' => true,
+            "message" => "Department {$updatedDepartment->name} has been updated successfully.",
+        ];
+    }
 
-        'message' =>
-
-            "Department {$updatedDepartment->name} has been updated successfully."
-
-    ];
-
-}
-
-private function requestDepartmentStatusConfirmation(
-    string $command,
-    int $status
-): array {
-
-    /*
+    private function requestDepartmentStatusConfirmation(
+        string $command,
+        int $status
+    ): array {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !auth()->check()
-        ||
-        !auth()->user()->can(
-            'departments.edit'
-        )
-    ) {
+        if (
+            !auth()->check() ||
+            !auth()
+                ->user()
+                ->can("departments.edit")
+        ) {
+            return [
+                "success" => false,
+                "message" =>
+                    "You do not have permission to change department status.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission to change department status.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Parse Department + Company
     |--------------------------------------------------------------------------
     */
 
-    $data =
-        $this->parseDepartmentAndCompany(
-            $command
-        );
+        $data = $this->parseDepartmentAndCompany($command);
 
+        $departmentName = $data["department_name"];
 
-    $departmentName =
-        $data['department_name'];
+        $companyName = $data["company_name"];
 
+        if (!$departmentName || !$companyName) {
+            return [
+                "success" => false,
+                "message" => "Department name and company name are required.",
+            ];
+        }
 
-    $companyName =
-        $data['company_name'];
-
-
-    if (!$departmentName || !$companyName) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Department name and company name are required.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Company
     |--------------------------------------------------------------------------
     */
 
-    $company = Company::where(
-        'name',
-        'like',
-        '%'.$companyName.'%'
-    )->first();
+        $company = Company::where(
+            "name",
+            "like",
+            "%" . $companyName . "%"
+        )->first();
 
+        if (!$company) {
+            return [
+                "success" => false,
+                "message" => "Company not found.",
+            ];
+        }
 
-    if (!$company) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Company not found.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole('Company Admin')
-        &&
-        auth()->user()->company_id != $company->id
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            auth()->user()->company_id != $company->id
+        ) {
+            return [
+                "success" => false,
+                "message" =>
+                    "You can only manage your own company departments.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You can only manage your own company departments.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findByName(
-                $departmentName,
-                $company->id
-            );
+        $department = $this->departmentService->findByName(
+            $departmentName,
+            $company->id
+        );
 
+        if (!$department) {
+            return [
+                "success" => false,
+                "message" => "Department {$departmentName} not found.",
+            ];
+        }
 
-    if (!$department) {
-
-        return [
-            'success' => false,
-            'message' =>
-                "Department {$departmentName} not found."
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Check Current Status
     |--------------------------------------------------------------------------
     */
 
-    if (
-        $department->status == $status
-    ) {
+        if ($department->status == $status) {
+            return [
+                "success" => false,
+                "message" => $status
+                    ? "Department is already active."
+                    : "Department is already inactive.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                $status
-                ?
-                'Department is already active.'
-                :
-                'Department is already inactive.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Store Pending Action
     |--------------------------------------------------------------------------
     */
 
-    session([
+        session([
+            "pending_department_status_update" => [
+                "department_id" => $department->id,
 
-        'pending_department_status_update' => [
+                "status" => $status,
+            ],
+        ]);
 
-            'department_id' =>
-                $department->id,
+        $newStatus = $status ? "Active" : "Inactive";
 
-            'status' =>
-                $status
+        return [
+            "success" => true,
 
-        ]
+            "message" =>
+                "⚠️ DEPARTMENT STATUS CONFIRMATION\n\n" .
+                "Department: {$department->name}\n" .
+                "Company: " .
+                ($department->company->name ?? "N/A") .
+                "\n" .
+                "New Status: {$newStatus}\n\n" .
+                "Type confirm to continue.",
+        ];
+    }
 
-    ]);
-
-
-    $newStatus =
-        $status
-        ?
-        'Active'
-        :
-        'Inactive';
-
-
-    return [
-
-        'success' => true,
-
-        'message' =>
-
-            "⚠️ DEPARTMENT STATUS CONFIRMATION\n\n".
-            "Department: {$department->name}\n".
-            "Company: ".($department->company->name ?? 'N/A')."\n".
-            "New Status: {$newStatus}\n\n".
-            "Type confirm to continue."
-
-    ];
-
-}
-
-//delete confirmation
-private function requestDepartmentDeleteConfirmation(
-    string $command
-): array {
-
-    /*
+    //delete confirmation
+    private function requestDepartmentDeleteConfirmation(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !$this->hasDepartmentPermission(
-            'departments.delete'
-        )
-    ) {
+        if (!$this->hasDepartmentPermission("departments.delete")) {
+            return [
+                "success" => false,
+                "message" =>
+                    "You do not have permission to delete departments.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission to delete departments.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Parse Department + Company
     |--------------------------------------------------------------------------
     */
 
-    $data =
-        $this->parseDepartmentAndCompany(
-            $command
-        );
+        $data = $this->parseDepartmentAndCompany($command);
 
-    $departmentName =
-        $data['department_name'];
+        $departmentName = $data["department_name"];
 
-    $companyName =
-        $data['company_name'];
+        $companyName = $data["company_name"];
 
-    if (
-        !$departmentName
-        ||
-        !$companyName
-    ) {
+        if (!$departmentName || !$companyName) {
+            return [
+                "success" => false,
+                "message" => "Department name and company name are required.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'Department name and company name are required.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Company
     |--------------------------------------------------------------------------
     */
 
-    $company = Company::where(
-        'name',
-        'like',
-        '%'.$companyName.'%'
-    )->first();
+        $company = Company::where(
+            "name",
+            "like",
+            "%" . $companyName . "%"
+        )->first();
 
-    if (!$company) {
+        if (!$company) {
+            return [
+                "success" => false,
+                "message" => "Company not found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'Company not found.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole(
-            'Company Admin'
-        )
-        &&
-        auth()->user()->company_id
-        !=
-        $company->id
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            auth()->user()->company_id != $company->id
+        ) {
+            return [
+                "success" => false,
+                "message" =>
+                    "You can only manage departments of your own company.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You can only manage departments of your own company.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findByName(
-                $departmentName,
-                $company->id
-            );
+        $department = $this->departmentService->findByName(
+            $departmentName,
+            $company->id
+        );
 
-    if (!$department) {
+        if (!$department) {
+            return [
+                "success" => false,
+                "message" => "Department not found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'Department not found.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Additional Company Access Check
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !$this->checkDepartmentCompanyAccess(
-            $department
-        )
-    ) {
+        if (!$this->checkDepartmentCompanyAccess($department)) {
+            return [
+                "success" => false,
+                "message" => "You cannot access another company department.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You cannot access another company department.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Store Pending Delete Request
     |--------------------------------------------------------------------------
     */
 
-    session([
+        session([
+            "pending_department_delete" => [
+                "department_id" => $department->id,
+            ],
+        ]);
 
-        'pending_department_delete' => [
-
-            'department_id' =>
-                $department->id
-
-        ]
-
-    ]);
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Response
     |--------------------------------------------------------------------------
     */
 
-    return [
+        return [
+            "success" => true,
 
-        'success' => true,
+            "message" =>
+                "⚠️ DELETE DEPARTMENT CONFIRMATION\n\n" .
+                "Department: {$department->name}\n" .
+                "Company: " .
+                ($department->company->name ?? "N/A") .
+                "\n\n" .
+                "Type confirm to continue.",
+        ];
+    }
+    private function requestDepartmentRestoreConfirmation(
+        string $command
+    ): array {
+        if (!$this->hasDepartmentPermission("departments.edit")) {
+            return [
+                "success" => false,
+                "message" =>
+                    "You do not have permission to restore departments.",
+            ];
+        }
 
-        'message' =>
+        $data = $this->parseDepartmentAndCompany($command);
 
-            "⚠️ DELETE DEPARTMENT CONFIRMATION\n\n".
-            "Department: {$department->name}\n".
-            "Company: ".($department->company->name ?? 'N/A')."\n\n".
-            "Type confirm to continue."
+        $company = Company::where(
+            "name",
+            "like",
+            "%" . $data["company_name"] . "%"
+        )->first();
 
-    ];
+        if (!$company) {
+            return [
+                "success" => false,
+                "message" => "Company not found.",
+            ];
+        }
 
-}
+        $department = $this->departmentService->findDeletedDepartment(
+            $data["department_name"],
+            $company->id
+        );
 
-private function confirmDepartmentStatusUpdate(
-    string $command
-): array {
+        if (!$department) {
+            return [
+                "success" => false,
+                "message" => "Deleted department not found.",
+            ];
+        }
 
-    /*
+        session([
+            "pending_department_restore" => [
+                "department_id" => $department->id,
+            ],
+        ]);
+
+        return [
+            "success" => true,
+
+            "message" =>
+                "⚠️ RESTORE DEPARTMENT CONFIRMATION\n\n" .
+                "Department: {$department->name}\n" .
+                "Company: {$company->name}\n\n" .
+                "Type confirm to restore.",
+        ];
+    }
+    private function confirmDepartmentStatusUpdate(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !auth()->check()
-        ||
-        !auth()->user()->can(
-            'departments.edit'
-        )
-    ) {
+        if (
+            !auth()->check() ||
+            !auth()
+                ->user()
+                ->can("departments.edit")
+        ) {
+            return [
+                "success" => false,
+                "message" => "You do not have permission.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Pending Status Validation
     |--------------------------------------------------------------------------
     */
 
-    $pending = session(
-        'pending_department_status_update'
-    );
+        $pending = session("pending_department_status_update");
 
+        if (!$pending) {
+            return [
+                "success" => false,
+                "message" => "No pending department status update found.",
+            ];
+        }
 
-    if (!$pending) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'No pending department status update found.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findById(
-                $pending['department_id']
-            );
-
-
-    if (!$department) {
-
-        session()->forget(
-            'pending_department_status_update'
+        $department = $this->departmentService->findById(
+            $pending["department_id"]
         );
 
-        return [
-            'success' => false,
-            'message' =>
-                'Department not found.'
-        ];
+        if (!$department) {
+            session()->forget("pending_department_status_update");
 
-    }
+            return [
+                "success" => false,
+                "message" => "Department not found.",
+            ];
+        }
 
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole('Company Admin')
-        &&
-        $department->company_id
-        !=
-        auth()->user()->company_id
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $department->company_id != auth()->user()->company_id
+        ) {
+            return [
+                "success" => false,
+                "message" => "You cannot update another company department.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You cannot update another company department.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Store Old Values
     |--------------------------------------------------------------------------
     */
 
-    $oldValues =
-        $department->toArray();
+        $oldValues = $department->toArray();
 
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Update Status
     |--------------------------------------------------------------------------
     */
 
-    $department->status =
-        $pending['status'];
+        $department->status = $pending["status"];
 
-    $department->save();
+        $department->save();
 
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Activity Log
     |--------------------------------------------------------------------------
     */
 
-    activity()
-        ->causedBy(auth()->user())
-        ->performedOn($department)
-        ->withProperties([
+        activity()
+            ->causedBy(auth()->user())
+            ->performedOn($department)
+            ->withProperties([
+                "user_id" => auth()->id(),
 
-            'user_id' =>
-                auth()->id(),
+                "module" => "Departments",
 
-            'module' =>
-                'Departments',
+                "action" => "Status Update",
 
-            'action' =>
-                'Status Update',
+                "old_values" => $oldValues,
 
-            'old_values' =>
-                $oldValues,
+                "new_values" => $department->fresh()->toArray(),
 
-            'new_values' =>
-                $department->fresh()->toArray(),
+                "ip_address" => request()->ip(),
 
-            'ip_address' =>
-                request()->ip(),
+                "browser" => request()->userAgent(),
 
-            'browser' =>
-                request()->userAgent(),
+                "source" => "AI Assistant",
 
-            'source' =>
-                'AI Assistant',
+                "command" => $command,
+            ])
+            ->log("Department status updated via AI Assistant");
 
-            'command' =>
-                $command,
-
-        ])
-        ->log(
-            'Department status updated via AI Assistant'
-        );
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Notification
     |--------------------------------------------------------------------------
     */
 
-    auth()->user()->notify(
+        auth()
+            ->user()
+            ->notify(
+                new DepartmentActionNotification(
+                    "Department {$department->name} status updated successfully."
+                )
+            );
 
-        new DepartmentActionNotification(
-
-            "Department {$department->name} status updated successfully."
-
-        )
-
-    );
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Clear Session
     |--------------------------------------------------------------------------
     */
 
-    session()->forget(
-        'pending_department_status_update'
-    );
+        session()->forget("pending_department_status_update");
 
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Response
     |--------------------------------------------------------------------------
     */
 
-    return [
+        return [
+            "success" => true,
 
-        'success' => true,
-
-        'message' =>
-
-            "Department {$department->name} is now ".
-            (
-                $department->status
-                ?
-                'Active'
-                :
-                'Inactive'
-            )
-
-    ];
-
-}
-/*
+            "message" =>
+                "Department {$department->name} is now " .
+                ($department->status ? "Active" : "Inactive"),
+        ];
+    }
+    /*
 |--------------------------------------------------------------------------
 | Confirm Department Delete
 |--------------------------------------------------------------------------
 */
 
-private function confirmDepartmentDelete(
-    string $command
-): array {
-
-    /*
+    private function confirmDepartmentDelete(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !auth()->check()
-        ||
-        !auth()->user()->can(
-            'departments.delete'
-        )
-    ) {
+        if (
+            !auth()->check() ||
+            !auth()
+                ->user()
+                ->can("departments.delete")
+        ) {
+            return [
+                "success" => false,
+                "message" => "You do not have permission.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Pending Delete Validation
     |--------------------------------------------------------------------------
     */
 
-    $pending = session(
-        'pending_department_delete'
-    );
+        $pending = session("pending_department_delete");
 
-    if (!$pending) {
+        if (!$pending) {
+            return [
+                "success" => false,
+                "message" => "No pending department delete request found.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'No pending department delete request found.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findById(
-                $pending['department_id']
-            );
-
-    if (!$department) {
-
-        session()->forget(
-            'pending_department_delete'
+        $department = $this->departmentService->findById(
+            $pending["department_id"]
         );
 
-        return [
-            'success' => false,
-            'message' =>
-                'Department not found.'
-        ];
+        if (!$department) {
+            session()->forget("pending_department_delete");
 
-    }
+            return [
+                "success" => false,
+                "message" => "Department not found.",
+            ];
+        }
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole(
-            'Company Admin'
-        )
-        &&
-        $department->company_id
-        !=
-        auth()->user()->company_id
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            $department->company_id != auth()->user()->company_id
+        ) {
+            return [
+                "success" => false,
+                "message" => "You cannot delete another company department.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You cannot delete another company department.'
-        ];
-
-    }
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Store Old Values
     |--------------------------------------------------------------------------
     */
 
-    $oldValues =
-        $department->toArray();
+        $oldValues = $department->toArray();
 
-    $departmentName =
-        $department->name;
+        $departmentName = $department->name;
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Delete Department
     |--------------------------------------------------------------------------
     */
 
-    $department->delete();
+        $department->delete();
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Activity Log
     |--------------------------------------------------------------------------
     */
 
-    activity()
-        ->causedBy(auth()->user())
-        ->withProperties([
+        activity()
+            ->causedBy(auth()->user())
+            ->withProperties([
+                "user_id" => auth()->id(),
 
-            'user_id' =>
-                auth()->id(),
+                "module" => "Departments",
 
-            'module' =>
-                'Departments',
+                "action" => "Delete",
 
-            'action' =>
-                'Delete',
+                "old_values" => $oldValues,
 
-            'old_values' =>
-                $oldValues,
+                "new_values" => null,
 
-            'new_values' =>
-                null,
+                "ip_address" => request()->ip(),
 
-            'ip_address' =>
-                request()->ip(),
+                "browser" => request()->userAgent(),
 
-            'browser' =>
-                request()->userAgent(),
+                "source" => "AI Assistant",
 
-            'source' =>
-                'AI Assistant',
+                "command" => $command,
+            ])
+            ->log("Department deleted via AI Assistant");
 
-            'command' =>
-                $command,
-
-        ])
-        ->log(
-            'Department deleted via AI Assistant'
-        );
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Notification
     |--------------------------------------------------------------------------
     */
 
-    auth()->user()->notify(
+        auth()
+            ->user()
+            ->notify(
+                new DepartmentActionNotification(
+                    "Department {$departmentName} deleted successfully."
+                )
+            );
 
-        new DepartmentActionNotification(
-
-            "Department {$departmentName} deleted successfully."
-
-        )
-
-    );
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Clear Session
     |--------------------------------------------------------------------------
     */
 
-    session()->forget(
-        'pending_department_delete'
-    );
+        session()->forget("pending_department_delete");
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Response
     |--------------------------------------------------------------------------
     */
 
-    return [
+        return [
+            "success" => true,
 
-        'success' => true,
+            "message" => "Department {$departmentName} has been deleted successfully.",
+        ];
+    }
+    private function confirmDepartmentRestore(string $command): array
+    {
+        $pending = session("pending_department_restore");
 
-        'message' =>
+        if (!$pending) {
+            return [
+                "success" => false,
+                "message" => "No pending department restore request found.",
+            ];
+        }
 
-            "Department {$departmentName} has been deleted successfully."
+        $department = Department::onlyTrashed()->find(
+            $pending["department_id"]
+        );
 
-    ];
+        if (!$department) {
+            session()->forget("pending_department_restore");
 
-}
+            return [
+                "success" => false,
+                "message" => "Department not found.",
+            ];
+        }
 
-private function showDepartmentDetails(
-    string $command
-): array {
+        $department->restore();
 
-    /*
+        activity()
+            ->causedBy(auth()->user())
+            ->performedOn($department)
+            ->withProperties([
+                "module" => "Departments",
+                "action" => "Restore",
+                "source" => "AI Assistant",
+                "command" => $command,
+            ])
+            ->log("Department restored via AI Assistant");
+
+        auth()
+            ->user()
+            ->notify(
+                new DepartmentActionNotification(
+                    "Department {$department->name} restored successfully."
+                )
+            );
+
+        session()->forget("pending_department_restore");
+
+        return [
+            "success" => true,
+
+            "message" => "Department {$department->name} restored successfully.",
+        ];
+    }
+    private function showDepartmentDetails(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-if (
-    !$this->hasDepartmentPermission(
-        'departments.view'
-    )
-) {
+        if (!$this->hasDepartmentPermission("departments.view")) {
+            return [
+                "success" => false,
+                "message" => "You do not have permission to view departments.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission to view departments.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Parse Department + Company
     |--------------------------------------------------------------------------
     */
 
-    $data =
-        $this->parseDepartmentAndCompany(
-            $command
-        );
+        $data = $this->parseDepartmentAndCompany($command);
 
+        $departmentName = $data["department_name"];
 
-    $departmentName =
-        $data['department_name'];
+        $companyName = $data["company_name"];
 
+        if (!$departmentName) {
+            return [
+                "success" => false,
+                "message" => "Department name is required.",
+            ];
+        }
 
-    $companyName =
-        $data['company_name'];
-
-
-    if (!$departmentName) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Department name is required.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Company
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole('Company Admin')
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $company = Company::find(auth()->user()->company_id);
+        } else {
+            if (
+                !auth()
+                    ->user()
+                    ->hasRole("Company Admin") &&
+                empty($companyName)
+            ) {
+                return [
+                    "success" => false,
+                    "message" => "Company name is required.",
+                ];
+            }
 
-        $company =
-            Company::find(
-                auth()->user()->company_id
-            );
-
-    } else {
-
-    if (
-    !auth()->user()->hasRole('Company Admin')
-    &&
-    empty($companyName)
-) {
-
-    return [
-        'success' => false,
-        'message' =>
-            'Company name is required.'
-    ];
-
-}
-
-        $company =
-            Company::where(
-                'name',
-                'like',
-                '%'.$companyName.'%'
+            $company = Company::where(
+                "name",
+                "like",
+                "%" . $companyName . "%"
             )->first();
+        }
 
-    }
+        if (!$company) {
+            return [
+                "success" => false,
+                "message" => "Company not found.",
+            ];
+        }
 
-
-    if (!$company) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Company not found.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
     |--------------------------------------------------------------------------
     */
 
-    if (
-        auth()->user()->hasRole('Company Admin')
-        &&
-        auth()->user()->company_id != $company->id
-    ) {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin") &&
+            auth()->user()->company_id != $company->id
+        ) {
+            return [
+                "success" => false,
+                "message" => "You can only view your own company departments.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You can only view your own company departments.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Find Department
     |--------------------------------------------------------------------------
     */
 
-    $department =
-        $this->departmentService
-            ->findByName(
-                $departmentName,
-                $company->id
-            );
+        $department = $this->departmentService->findByName(
+            $departmentName,
+            $company->id
+        );
 
+        if (!$department) {
+            return [
+                "success" => false,
+                "message" => "Department {$departmentName} not found.",
+            ];
+        }
 
-    if (!$department) {
-
-        return [
-            'success' => false,
-            'message' =>
-                "Department {$departmentName} not found."
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Response
     |--------------------------------------------------------------------------
     */
 
-    return [
+        return [
+            "success" => true,
 
-        'success' => true,
+            "message" =>
+                "📄 DEPARTMENT DETAILS\n\n" .
+                "Department: {$department->name}\n" .
+                "Company: {$department->company->name}\n" .
+                "Code: " .
+                ($department->code ?? "N/A") .
+                "\n" .
+                "Description: " .
+                ($department->description ?? "N/A") .
+                "\n" .
+                "Status: " .
+                ($department->status ? "Active" : "Inactive") .
+                "\nCreated Date: " .
+                $department->created_at->format("d-m-Y"),
+        ];
+    }
 
-        'message' =>
-
-            "📄 DEPARTMENT DETAILS\n\n".
-            "Department: {$department->name}\n".
-            "Company: {$department->company->name}\n".
-            "Code: ".($department->code ?? 'N/A')."\n".
-            "Description: ".($department->description ?? 'N/A')."\n".
-            "Status: ".
-            (
-                $department->status
-                ?
-                'Active'
-                :
-                'Inactive'
-            ).
-            "\nCreated Date: ".
-            $department->created_at->format('d-m-Y')
-
-    ];
-
-}
-
-private function listDepartments(
-    string $command
-): array {
-
-    /*
+    private function listDepartments(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-    if (
-        !$this->hasDepartmentPermission(
-            'departments.view'
-        )
-    ) {
+        if (!$this->hasDepartmentPermission("departments.view")) {
+            return [
+                "success" => false,
+                "message" => "You do not have permission to view departments.",
+            ];
+        }
 
-        return [
-            'success' => false,
-            'message' =>
-                'You do not have permission to view departments.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Detection
     |--------------------------------------------------------------------------
     */
 
-    $data =
-        $this->parseDepartmentAndCompany(
-            $command
-        );
-
-
-    if (
-        auth()->user()->hasRole('Company Admin')
-    ) {
-
-        $company =
-            Company::find(
-                auth()->user()->company_id
-            );
-
-    } else {
+      $data =
+    $this->parseCompanyCommand(
+        $command
+    );
 
         if (
-            empty($data['company_name'])
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
         ) {
+            $company = Company::find(auth()->user()->company_id);
+        } else {
+            if (empty($data["company_name"])) {
+                return [
+                    "success" => false,
+                    "message" => "Company name is required.",
+                ];
+            }
 
-            return [
-                'success' => false,
-                'message' =>
-                    'Company name is required.'
-            ];
-
+            $company = Company::where(
+                "name",
+                "like",
+                "%" . $data["company_name"] . "%"
+            )->first();
         }
 
-        $company =
-            Company::where(
-                'name',
-                'like',
-                '%'.$data['company_name'].'%'
-            )->first();
+        if (!$company) {
+            return [
+                "success" => false,
+                "message" => "Company not found.",
+            ];
+        }
 
-    }
-
-
-    if (!$company) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Company not found.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Get Departments
     |--------------------------------------------------------------------------
     */
 
-    $departments =
-        $company->departments()
-            ->get();
+        $departments = $company->departments()->get();
 
+        if ($departments->isEmpty()) {
+            return [
+                "success" => false,
+                "message" => "No departments found.",
+            ];
+        }
 
-    if ($departments->isEmpty()) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'No departments found.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Build Response
     |--------------------------------------------------------------------------
     */
 
-    $message =
-        "📋 DEPARTMENTS LIST\n\n".
-        "Company: {$company->name}\n\n";
+        $message = "📋 DEPARTMENTS LIST\n\n" . "Company: {$company->name}\n\n";
 
+        foreach ($departments as $index => $department) {
+            $message .=
+                $index +
+                1 .
+                ". {$department->name}\n" .
+                "   Code: " .
+                ($department->code ?? "N/A") .
+                "\n" .
+                "   Status: " .
+                ($department->status ? "Active" : "Inactive") .
+                "\n\n";
+        }
 
-    foreach (
-        $departments as $index => $department
-    ) {
+        return [
+            "success" => true,
 
-        $message .=
-
-            ($index + 1).
-            ". {$department->name}\n".
-            "   Code: ".
-            ($department->code ?? 'N/A').
-            "\n".
-            "   Status: ".
-            (
-                $department->status
-                ?
-                'Active'
-                :
-                'Inactive'
-            ).
-            "\n\n";
-
+            "message" => $message,
+        ];
     }
 
-
-    return [
-
-        'success' => true,
-
-        'message' =>
-            $message
-
-    ];
-
-}
-
-private function searchDepartments(
-    string $command
-): array {
-
-
-    /*
+    private function searchDepartments(string $command): array
+    {
+        /*
     |--------------------------------------------------------------------------
     | Permission Validation
     |--------------------------------------------------------------------------
     */
 
-if (
-    !$this->hasDepartmentPermission(
-        'departments.view'
-    )
-)
-{
-    return [
-        'success' => false,
-        'message' =>
-            'You do not have permission to view departments.'
-    ];
-}
+        if (!$this->hasDepartmentPermission("departments.view")) {
+            return [
+                "success" => false,
+                "message" => "You do not have permission to view departments.",
+            ];
+        }
 
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Extract Keyword
     |--------------------------------------------------------------------------
     */
 
-    $keyword =
-        trim(
-            str_ireplace(
-                'search department',
-                '',
-                $command
-            )
-        );
+        $keyword = trim(str_ireplace("search department", "", $command));
 
+        $keyword = preg_replace('/\s+in company.*$/i', "", $keyword);
 
-    $keyword =
-        preg_replace(
-            '/\s+in company.*$/i',
-            '',
-            $keyword
-        );
+        if (!$keyword) {
+            return [
+                "success" => false,
+                "message" => "Search keyword is required.",
+            ];
+        }
 
-
-    if (!$keyword) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'Search keyword is required.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Company Filter
     |--------------------------------------------------------------------------
     */
 
-    $data =
-        $this->parseDepartmentAndCompany(
-            $command
-        );
+        $data = $this->parseDepartmentAndCompany($command);
 
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            $companyId = auth()->user()->company_id;
+        } else {
+            $companyId = null;
 
-    if (
-        auth()->user()->hasRole('Company Admin')
-    ) {
-
-        $companyId =
-            auth()->user()->company_id;
-
-    } else {
-
-        $companyId = null;
-
-
-        if ($data['company_name']) {
-
-            $company =
-                Company::where(
-                    'name',
-                    'like',
-                    '%'.$data['company_name'].'%'
+            if ($data["company_name"]) {
+                $company = Company::where(
+                    "name",
+                    "like",
+                    "%" . $data["company_name"] . "%"
                 )->first();
 
+                if (!$company) {
+                    return [
+                        "success" => false,
+                        "message" => "Company not found.",
+                    ];
+                }
 
-            if (!$company) {
-
-                return [
-                    'success' => false,
-                    'message' =>
-                        'Company not found.'
-                ];
-
+                $companyId = $company->id;
             }
-
-            $companyId =
-                $company->id;
-
         }
 
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Search Query
     |--------------------------------------------------------------------------
     */
 
-    $query =
-        \App\Models\Department::where(
-            'name',
-            'like',
-            '%'.$keyword.'%'
+        $query = \App\Models\Department::where(
+            "name",
+            "like",
+            "%" . $keyword . "%"
         );
 
+        if ($companyId) {
+            $query->where("company_id", $companyId);
+        }
 
-    if ($companyId) {
+        $departments = $query->get();
 
-        $query->where(
-            'company_id',
-            $companyId
-        );
+        if ($departments->isEmpty()) {
+            return [
+                "success" => false,
+                "message" => "No matching departments found.",
+            ];
+        }
 
-    }
-
-
-    $departments =
-        $query->get();
-
-
-    if ($departments->isEmpty()) {
-
-        return [
-            'success' => false,
-            'message' =>
-                'No matching departments found.'
-        ];
-
-    }
-
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Response
     |--------------------------------------------------------------------------
     */
 
-    $message =
-        "🔎 DEPARTMENT SEARCH RESULT\n\n";
+        $message = "🔎 DEPARTMENT SEARCH RESULT\n\n";
 
+        foreach ($departments as $index => $department) {
+            $message .=
+                $index +
+                1 .
+                ". {$department->name}\n" .
+                "Company: {$department->company->name}\n" .
+                "Code: " .
+                ($department->code ?? "N/A") .
+                "\nStatus: " .
+                ($department->status ? "Active" : "Inactive") .
+                "\n\n";
+        }
 
-    foreach (
-        $departments as $index => $department
-    ) {
+        return [
+            "success" => true,
 
-        $message .=
-
-            ($index + 1).
-            ". {$department->name}\n".
-            "Company: {$department->company->name}\n".
-            "Code: ".
-            ($department->code ?? 'N/A').
-            "\nStatus: ".
-            (
-                $department->status
-                ?
-                'Active'
-                :
-                'Inactive'
-            ).
-            "\n\n";
-
+            "message" => $message,
+        ];
     }
 
+    private function hasDepartmentPermission(string $permission): bool
+    {
+        if (!auth()->check()) {
+            return false;
+        }
 
-    return [
+        return auth()
+            ->user()
+            ->can($permission);
+    }
+    private function parseCreateDepartment(string $command): array
+    {
+        preg_match(
+            "/department\s+named\s+(.*?)\s+in\s+company\s+(.*?)\s+with\s+code\s+([^\s]+)(?:\s+description\s+(.*))?/i",
 
-        'success' => true,
+            $command,
 
-        'message' =>
-            $message
+            $matches
+        );
 
-    ];
+        return [
+            "name" => trim($matches[1] ?? ""),
 
-}
+            "company_name" => trim($matches[2] ?? ""),
 
-private function hasDepartmentPermission(
-    string $permission
-): bool {
+            "code" => trim($matches[3] ?? ""),
 
-    if (!auth()->check()) {
-        return false;
+            "description" => trim($matches[4] ?? ""),
+        ];
     }
 
+    private function checkDepartmentCompanyAccess($department): bool
+    {
+        if (
+            auth()
+                ->user()
+                ->hasRole("Company Admin")
+        ) {
+            if (!$department) {
+                return false;
+            }
 
-    return auth()->user()->can(
-        $permission
-    );
+            return $department->company_id == auth()->user()->company_id;
+        }
 
-}
-private function parseCreateDepartment(
-    string $command
-): array {
-
-    preg_match(
-
-        '/department\s+named\s+(.*?)\s+in\s+company\s+(.*?)\s+with\s+code\s+([^\s]+)(?:\s+description\s+(.*))?/i',
-
-        $command,
-
-        $matches
-
-    );
-
-    return [
-
-        'name' =>
-            trim(
-                $matches[1] ?? ''
-            ),
-
-        'company_name' =>
-            trim(
-                $matches[2] ?? ''
-            ),
-
-        'code' =>
-            trim(
-                $matches[3] ?? ''
-            ),
-
-        'description' =>
-            trim(
-                $matches[4] ?? ''
-            ),
-
-    ];
-
-}
-
-private function checkDepartmentCompanyAccess(
-    $department
-): bool {
-
-    if (
-        auth()->user()
-        ->hasRole('Company Admin')
-    ) {
-
-        if (!$department) {
-    return false;
-}
-
-return
-    $department->company_id
-    ==
-    auth()->user()->company_id;
-
+        return true;
     }
-
-
-    return true;
-
-}
-/*
+    /*
 |--------------------------------------------------------------------------
 | Parse Department + Company
 |--------------------------------------------------------------------------
 */
 
-private function parseDepartmentAndCompany(
+    private function parseDepartmentAndCompany(string $command): array
+    {
+        preg_match(
+            "/department\s+(.*?)\s+(?:in|from)\s+company\s+(.*)/i",
+            $command,
+            $matches
+        );
+
+        return [
+            "department_name" => trim($matches[1] ?? ""),
+
+            "company_name" => trim($matches[2] ?? ""),
+        ];
+    }
+    private function parseUpdateDepartmentCommand(string $command): array
+    {
+        preg_match(
+            '/department\s+(.*?)\s+in\s+company\s+(.*?)(?:\s+name|\s+code|\s+description|$)/i',
+            $command,
+            $matches
+        );
+
+        return [
+            "department_name" => trim($matches[1] ?? ""),
+
+            "company_name" => trim($matches[2] ?? ""),
+        ];
+    }
+    private function parseCompanyCommand(
     string $command
 ): array {
 
     preg_match(
-        '/department\s+(.*?)\s+(?:in|from)\s+company\s+(.*)/i',
+        '/in\s+company\s+(.*)$/i',
         $command,
         $matches
     );
 
     return [
-
-        'department_name' =>
-            trim(
-                $matches[1] ?? ''
-            ),
-
         'company_name' =>
-            trim(
-                $matches[2] ?? ''
-            )
-
+            trim($matches[1] ?? '')
     ];
-
-}
-private function parseUpdateDepartmentCommand(
-    string $command
-): array {
-
-    preg_match(
-        '/department\s+(.*?)\s+in\s+company\s+(.*?)(?:\s+name|\s+code|\s+description|$)/i',
-        $command,
-        $matches
-    );
-
-    return [
-
-        'department_name' =>
-            trim(
-                $matches[1] ?? ''
-            ),
-
-        'company_name' =>
-            trim(
-                $matches[2] ?? ''
-            )
-
-    ];
-
 }
 }

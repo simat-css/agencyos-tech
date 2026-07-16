@@ -53,7 +53,8 @@ class AIController extends Controller
             elseif (
                 session()->has("pending_department_update") ||
                 session()->has("pending_department_delete") ||
-                session()->has("pending_department_status_update")
+                session()->has("pending_department_status_update")||
+                session()->has("pending_department_restore")
             ) {
                 $result = $this->departmentAIService->process(
                     $request->command

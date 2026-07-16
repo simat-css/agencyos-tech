@@ -5,287 +5,860 @@ namespace App\Services;
 use App\Models\Department;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\ActivityHelper;
+use App\Notifications\UserActionNotification;
 
 class DepartmentService
 {
     /**
      * Get all departments
      */
-   public function getAll($search = null)
-{
-    // $query = Company::with('creator');
-    $query = Department::with('company');
+    public function getAll($search = null)
+    {
+        $query = Department::with('company');
 
-    if ($search) {
-        $query->where('name', 'like', "%{$search}%");
+        if ($search) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        return $query->latest()->paginate(10);
     }
 
-    return $query->latest()->paginate(10);
-}
 
     /**
      * Create Department
      */
-    public function create(array $data): Department
-    {
-        return DB::transaction(function () use ($data) {
+    /**
+ * Create Department
+ */
+public function create(array $data): Department
+{
+    $authUser = auth()->user();
 
-            $data['created_by'] = Auth::id();
 
-            return Department::create($data);
-        });
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Check
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$authUser->can("departments.create")) {
+
+        throw new \Exception(
+            "You do not have permission to create departments."
+        );
+
     }
+
+
+
+    return DB::transaction(function () use (
+        $data,
+        $authUser
+    ) {
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Department
+        |--------------------------------------------------------------------------
+        */
+
+        $data['created_by'] = Auth::id();
+
+
+        $department = Department::create($data);
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        ActivityHelper::log(
+            $authUser,
+            $department,
+            "Department",
+            "created",
+            [],
+            $department->load('company')->toArray()
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notification
+        |--------------------------------------------------------------------------
+        */
+
+        $authUser->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been created."
+            )
+        );
+
+
+
+        return $department;
+
+    });
+}
+
 
     /**
      * Update Department
      */
-    public function update(
-        Department $department,
-        array $data
-    ): Department {
+    /**
+ * Update Department
+ */
+public function update(
+    Department $department,
+    array $data
+): Department {
 
-        return DB::transaction(function () use (
-            $department,
-            $data
-        ) {
+    $authUser = auth()->user();
 
-            $data['updated_by'] = Auth::id();
 
-            $department->update($data);
 
-            return $department->fresh();
-        });
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Check
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$authUser->can("departments.edit")) {
+
+        throw new \Exception(
+            "You do not have permission to edit departments."
+        );
+
     }
+
+
+
+    return DB::transaction(function () use (
+        $department,
+        $data,
+        $authUser
+    ) {
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Old Data For Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        $oldData = $department
+            ->load('company')
+            ->toArray();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Department
+        |--------------------------------------------------------------------------
+        */
+
+        $data['updated_by'] = Auth::id();
+
+
+        $department->update($data);
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | New Data For Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        $newData = $department
+            ->fresh()
+            ->load('company')
+            ->toArray();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        ActivityHelper::log(
+            $authUser,
+            $department,
+            "Department",
+            "updated",
+            $oldData,
+            $newData
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notification
+        |--------------------------------------------------------------------------
+        */
+
+        $authUser->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been updated."
+            )
+        );
+
+
+
+        return $department->fresh();
+
+    });
+}
 
     /**
-     * Delete Department
-     */
-    public function delete(
-        Department $department
-    ): bool {
+ * Delete Department
+ */
+public function delete(
+    Department $department
+): bool {
 
-        return DB::transaction(function () use ($department) {
+    $authUser = auth()->user();
 
-            return $department->delete();
 
-        });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Check
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$authUser->can("departments.delete")) {
+
+        throw new \Exception(
+            "You do not have permission to delete departments."
+        );
+
     }
+
+
+
+    return DB::transaction(function () use (
+        $department,
+        $authUser
+    ) {
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Store Old Data Before Delete
+        |--------------------------------------------------------------------------
+        */
+
+        $oldData = $department
+            ->load('company')
+            ->toArray();
+
+
+        $departmentName = $department->name;
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        ActivityHelper::log(
+            $authUser,
+            $department,
+            "Department",
+            "deleted",
+            $oldData,
+            []
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Soft Delete
+        |--------------------------------------------------------------------------
+        */
+
+        $department->delete();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notification
+        |--------------------------------------------------------------------------
+        */
+
+        $authUser->notify(
+            new UserActionNotification(
+                "Department {$departmentName} has been deleted."
+            )
+        );
+
+
+
+        return true;
+
+    });
+}
+
 
     /**
      * Toggle Status
      */
-    public function toggleStatus(
-        Department $department
-    ): Department {
-
-        return DB::transaction(function () use ($department) {
-
-            $department->update([
-
-                'status' => ! $department->status,
-
-                'updated_by' => Auth::id(),
-
-            ]);
-
-            return $department->fresh();
-
-        });
-    }
-
-    //AI DEPARTMENT
     /**
- * Find Department by ID
+ * Toggle Status
  */
-public function findById(int $id): ?Department
-{
-    return Department::with([
-        'company',
-        'users'
-    ])->find($id);
-}
+public function toggleStatus(
+    Department $department
+): Department {
 
-/**
- * Find Department by Name
- */
-public function findByName(
-    string $name,
-    ?int $companyId = null
-): ?Department {
+    $authUser = auth()->user();
 
-    $query = Department::with('company')
-        ->where('name', 'like', "%{$name}%");
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Check
+    |--------------------------------------------------------------------------
+    */
 
-    if ($companyId) {
-        $query->where('company_id', $companyId);
-    }
+    if (!$authUser->can("departments.edit")) {
 
-    return $query->first();
-}
-/**
- * Check Duplicate Department Code
- */
-public function codeExists(
-    string $code,
-    int $companyId,
-    ?int $ignoreId = null
-): bool {
-
-    return Department::where(
-        'code',
-        $code
-    )
-    ->where(
-        'company_id',
-        $companyId
-    )
-    ->when(
-        $ignoreId,
-        fn ($q) =>
-            $q->where(
-                'id',
-                '!=',
-                $ignoreId
-            )
-    )
-    ->exists();
-}
-//Active Departments
-public function getActiveDepartments(
-    ?int $companyId = null
-) {
-
-    return Department::with('company')
-        ->where('status', 1)
-        ->when(
-            $companyId,
-            fn ($q) =>
-                $q->where(
-                    'company_id',
-                    $companyId
-                )
-        )
-        ->orderBy('name')
-        ->get();
-}
-//Inactive Departments
-public function getInactiveDepartments(
-    ?int $companyId = null
-) {
-
-    return Department::with('company')
-        ->where('status', 0)
-        ->when(
-            $companyId,
-            fn ($q) =>
-                $q->where(
-                    'company_id',
-                    $companyId
-                )
-        )
-        ->orderBy('name')
-        ->get();
-}
-//Search Departments
-public function search(
-    string $keyword,
-    ?int $companyId = null
-) {
-
-    return Department::with([
-        'company',
-        'users'
-    ])
-    ->where(function ($q) use ($keyword) {
-
-        $q->where(
-            'name',
-            'like',
-            "%{$keyword}%"
-        )
-        ->orWhere(
-            'code',
-            'like',
-            "%{$keyword}%"
+        throw new \Exception(
+            "You do not have permission to update department status."
         );
 
-    })
-    ->when(
-        $companyId,
-        fn ($q) =>
-            $q->where(
+    }
+
+    return DB::transaction(function () use (
+        $department,
+        $authUser
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Old Data
+        |--------------------------------------------------------------------------
+        */
+
+        $oldData = $department
+            ->load('company')
+            ->toArray();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Status
+        |--------------------------------------------------------------------------
+        */
+
+        $department->update([
+
+            'status' => ! $department->status,
+
+            'updated_by' => Auth::id(),
+
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Refresh Model
+        |--------------------------------------------------------------------------
+        */
+
+        $department->refresh();
+
+        /*
+        |--------------------------------------------------------------------------
+        | New Data
+        |--------------------------------------------------------------------------
+        */
+
+        $newData = $department
+            ->load('company')
+            ->toArray();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        ActivityHelper::log(
+            $authUser,
+            $department,
+            "Department",
+            "status_updated",
+            $oldData,
+            $newData
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notification
+        |--------------------------------------------------------------------------
+        */
+
+        $message = $department->status
+            ? "Department {$department->name} has been activated."
+            : "Department {$department->name} has been deactivated.";
+
+        $authUser->notify(
+            new UserActionNotification(
+                $message
+            )
+        );
+
+        return $department;
+
+    });
+}
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI Department Methods
+    |--------------------------------------------------------------------------
+    */
+
+
+    /**
+     * Find Department by ID
+     */
+    public function findById(int $id): ?Department
+    {
+        return Department::with([
+            'company',
+            'users'
+        ])->find($id);
+    }
+
+
+    /**
+     * Find Department by Name
+     */
+    public function findByName(
+        string $name,
+        ?int $companyId = null
+    ): ?Department {
+
+        $query = Department::with('company')
+            ->where('name', 'like', "%{$name}%");
+
+
+        if ($companyId) {
+
+            $query->where('company_id', $companyId);
+
+        }
+
+
+        return $query->first();
+    }
+
+
+    /**
+     * Check Duplicate Department Code
+     */
+    public function codeExists(
+        string $code,
+        int $companyId,
+        ?int $ignoreId = null
+    ): bool {
+
+        return Department::where('code', $code)
+            ->where('company_id', $companyId)
+            ->when(
+                $ignoreId,
+                fn ($q) => $q->where('id', '!=', $ignoreId)
+            )
+            ->exists();
+    }
+
+
+
+    /**
+     * Get Active Departments
+     */
+    public function getActiveDepartments(?int $companyId = null)
+    {
+        return Department::with('company')
+            ->where('status', 1)
+            ->when(
+                $companyId,
+                fn ($q) => $q->where('company_id', $companyId)
+            )
+            ->orderBy('name')
+            ->get();
+    }
+
+
+
+    /**
+     * Get Inactive Departments
+     */
+    public function getInactiveDepartments(?int $companyId = null)
+    {
+        return Department::with('company')
+            ->where('status', 0)
+            ->when(
+                $companyId,
+                fn ($q) => $q->where('company_id', $companyId)
+            )
+            ->orderBy('name')
+            ->get();
+    }
+
+
+
+    /**
+     * Search Departments
+     */
+    public function search(
+        string $keyword,
+        ?int $companyId = null
+    ) {
+
+        return Department::with([
+                'company',
+                'users'
+            ])
+            ->where(function ($q) use ($keyword) {
+
+                $q->where(
+                    'name',
+                    'like',
+                    "%{$keyword}%"
+                )
+                ->orWhere(
+                    'code',
+                    'like',
+                    "%{$keyword}%"
+                );
+
+            })
+            ->when(
+                $companyId,
+                fn ($q) => $q->where(
+                    'company_id',
+                    $companyId
+                )
+            )
+            ->orderBy('name')
+            ->get();
+    }
+
+
+
+    /**
+     * Department Statistics
+     */
+    public function statistics(?int $companyId = null): array
+    {
+        $query = Department::query();
+
+
+        if ($companyId) {
+
+            $query->where(
                 'company_id',
                 $companyId
-            )
-    )
-    ->orderBy('name')
-    ->get();
-}
-//Statistics
-public function statistics(
-    ?int $companyId = null
-): array {
+            );
 
-    $query = Department::query();
+        }
 
-    if ($companyId) {
-        $query->where(
-            'company_id',
-            $companyId
-        );
+
+        $total = (clone $query)->count();
+
+        $active = (clone $query)
+            ->where('status', 1)
+            ->count();
+
+
+        $inactive = (clone $query)
+            ->where('status', 0)
+            ->count();
+
+
+        return [
+            'total' => $total,
+            'active' => $active,
+            'inactive' => $inactive,
+        ];
     }
 
-    $total = (clone $query)->count();
 
-    $active = (clone $query)
-        ->where('status', 1)
-        ->count();
 
-    $inactive = (clone $query)
-        ->where('status', 0)
-        ->count();
-
-    return [
-        'total' => $total,
-        'active' => $active,
-        'inactive' => $inactive,
-    ];
-}
-//Activate Department
+    /**
+     * Activate Department
+     */
+   //Activate Department
 public function activate(
     Department $department
 ): Department {
 
-    $department->update([
-        'status' => 1,
-        'updated_by' => auth()->id(),
-    ]);
+    $authUser = auth()->user();
 
-    return $department->fresh();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Check
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$authUser->can("departments.edit")) {
+
+        throw new \Exception(
+            "You do not have permission to activate departments."
+        );
+
+    }
+
+
+
+    return DB::transaction(function () use (
+        $department,
+        $authUser
+    ) {
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Old Data
+        |--------------------------------------------------------------------------
+        */
+
+        $oldData = $department
+            ->load('company')
+            ->toArray();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activate Department
+        |--------------------------------------------------------------------------
+        */
+
+        $department->update([
+
+            'status' => 1,
+
+            'updated_by' => auth()->id(),
+
+        ]);
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | New Data
+        |--------------------------------------------------------------------------
+        */
+
+        $newData = $department
+            ->fresh()
+            ->load('company')
+            ->toArray();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        ActivityHelper::log(
+            $authUser,
+            $department,
+            "Department",
+            "activated",
+            $oldData,
+            $newData
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notification
+        |--------------------------------------------------------------------------
+        */
+
+        $authUser->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been activated."
+            )
+        );
+
+
+
+        return $department->fresh();
+
+    });
 }
-//Deactivate Department
+
+
+
+    //Deactivate Department
 public function deactivate(
     Department $department
 ): Department {
 
-    $department->update([
-        'status' => 0,
-        'updated_by' => auth()->id(),
-    ]);
+    $authUser = auth()->user();
 
-    return $department->fresh();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permission Check
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$authUser->can("departments.edit")) {
+
+        throw new \Exception(
+            "You do not have permission to deactivate departments."
+        );
+
+    }
+
+
+
+    return DB::transaction(function () use (
+        $department,
+        $authUser
+    ) {
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Old Data
+        |--------------------------------------------------------------------------
+        */
+
+        $oldData = $department
+            ->load('company')
+            ->toArray();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Deactivate Department
+        |--------------------------------------------------------------------------
+        */
+
+        $department->update([
+
+            'status' => 0,
+
+            'updated_by' => auth()->id(),
+
+        ]);
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | New Data
+        |--------------------------------------------------------------------------
+        */
+
+        $newData = $department
+            ->fresh()
+            ->load('company')
+            ->toArray();
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Activity Log
+        |--------------------------------------------------------------------------
+        */
+
+        ActivityHelper::log(
+            $authUser,
+            $department,
+            "Department",
+            "deactivated",
+            $oldData,
+            $newData
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notification
+        |--------------------------------------------------------------------------
+        */
+
+        $authUser->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been deactivated."
+            )
+        );
+
+
+
+        return $department->fresh();
+
+    });
 }
-public function findByNameAndCompany(
-    string $departmentName,
-    int $companyId
-) {
-    return Department::where('company_id', $companyId)
-        ->whereRaw(
-            'LOWER(TRIM(name)) = ?',
-            [
-                strtolower(trim($departmentName))
-            ]
-        )
-        ->first();
-}
+
+
+
+    /**
+     * Find Department by Name and Company
+     */
+    public function findByNameAndCompany(
+        string $departmentName,
+        int $companyId
+    ) {
+
+        return Department::where('company_id', $companyId)
+            ->whereRaw(
+                'LOWER(TRIM(name)) = ?',
+                [
+                    strtolower(trim($departmentName))
+                ]
+            )
+            ->first();
+    }
+
+
+
+    /**
+     * Find Deleted Department
+     */
+    public function findDeletedDepartment(
+        string $name,
+        int $companyId
+    ): ?Department {
+
+        return Department::onlyTrashed()
+            ->where('company_id', $companyId)
+            ->whereRaw(
+                'LOWER(TRIM(name)) = ?',
+                [
+                    strtolower(trim($name))
+                ]
+            )
+            ->first();
+    }
 }

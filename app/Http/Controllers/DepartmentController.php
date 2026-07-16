@@ -105,9 +105,18 @@ class DepartmentController extends Controller
 
         'companiesWithDepartments' => $companiesWithDepartments,
 
-        'companies' => Company::active()
-            ->orderBy('name')
-            ->get(),
+       'companies' => auth()->user()->hasRole('Super Admin')
+
+    ? Company::active()
+        ->whereHas('departments')
+        ->orderBy('name')
+        ->get()
+
+    : Company::active()
+        ->where('id', auth()->user()->company_id)
+        ->whereHas('departments')
+        ->orderBy('name')
+        ->get(),
 
         'totalDepartments' => Department::count(),
 
@@ -235,12 +244,17 @@ public function destroy(Department $department)
     // Check Assigned Users
     if ($department->users()->exists()) {
 
+        $message = "Cannot delete department '{$department->name}' because users are assigned to it.";
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => $message
+            ], 400);
+        }
+
         return redirect()
             ->back()
-            ->with(
-                'error',
-                "Cannot delete department '{$department->name}' because users are assigned to it."
-            );
+            ->with('error', $message);
     }
 
     $this->departmentService->delete($department);
@@ -250,9 +264,17 @@ public function destroy(Department $department)
         ->performedOn($department)
         ->log('Department deleted successfully.');
 
+    $message = 'Department deleted successfully.';
+
+    if (request()->expectsJson()) {
+        return response()->json([
+            'message' => $message
+        ]);
+    }
+
     return redirect()
         ->route('departments.index')
-        ->with('success', 'Department deleted successfully.');
+        ->with('success', $message);
 }
 
     /**

@@ -9,6 +9,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AIController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -275,5 +276,38 @@ Route::middleware(['auth'])
           [UserController::class, 'getDepartments']
           )->name('companies.departments');
 });
+
+// Notification Center
+Route::middleware('auth')
+    ->prefix('notifications')
+    ->name('notifications.')
+    ->group(function () {
+
+        Route::get(
+            '/',
+            [NotificationController::class, 'index']
+        )->name('index');
+
+        Route::post(
+            '/{id}/read',
+            [NotificationController::class, 'markAsRead']
+        )->name('read');
+
+        Route::post(
+            '/mark-all-read',
+            [NotificationController::class, 'markAllRead']
+        )->name('read-all');
+
+        Route::delete(
+            '/{id}',
+            [NotificationController::class, 'destroy']
+        )->name('destroy');
+        
+        Route::post(
+    '/bulk-delete',
+    [NotificationController::class, 'bulkDelete']
+)
+->name('bulk-delete');
+    });
 
 require __DIR__ . '/auth.php';

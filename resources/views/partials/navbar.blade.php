@@ -47,16 +47,74 @@
             </div>
 
             {{-- Notification --}}
-            <a href="#"
-               class="position-relative text-white text-decoration-none">
+            <div class="dropdown">
 
-                <i class="fas fa-bell fs-5"></i>
+    <a href="#"
+       class="position-relative text-white text-decoration-none"
+       data-bs-toggle="dropdown">
 
-                <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">
-                    3
-                </span>
+        <i class="fas fa-bell fs-5"></i>
 
-            </a>
+@if(auth()->user()->unreadNotifications()->count())
+            <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">
+
+                {{ auth()->user()->unreadNotifications()->count() }}
+
+            </span>
+
+        @endif
+
+    </a>
+
+    <div class="dropdown-menu dropdown-menu-end shadow notification-dropdown">
+
+        @forelse(
+            auth()->user()
+                ->notifications()
+                ->latest()
+                ->take(5)
+                ->get()
+            as $notification
+        )
+
+            <div class="dropdown-item">
+
+                <div class="fw-semibold">
+
+                    {{ $notification->data['message'] }}
+
+                </div>
+
+                <small class="text-muted">
+
+                    {{ $notification->created_at->diffForHumans() }}
+
+                </small>
+
+            </div>
+
+        @empty
+
+            <div class="dropdown-item text-muted">
+
+                No notifications found
+
+            </div>
+
+        @endforelse
+
+        <div class="dropdown-divider"></div>
+
+        <a href="{{ route('notifications.index') }}"
+           class="dropdown-item text-center">
+
+            View All Notifications
+
+        </a>
+
+    </div>
+
+</div>
 
             {{-- User Dropdown --}}
             <div class="dropdown">

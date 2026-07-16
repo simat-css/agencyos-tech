@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Models\User;
+use App\Notifications\CompanyActionNotification;
 
 class CompanyService
 {
@@ -26,13 +28,25 @@ class CompanyService
     public function create(array $data): Company
     {
         return DB::transaction(function () use ($data) {
-            // Upload Logo
             if (!empty($data["logo"])) {
                 $data["logo"] = $data["logo"]->store("companies", "public");
             }
 
             $data["created_by"] = Auth::id();
-            return Company::create($data);
+
+            $company = Company::create($data);
+
+            $admins = User::role("Super Admin")->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(
+                    new CompanyActionNotification(
+                        "Company {$company->name} created successfully."
+                    )
+                );
+            }
+
+            return $company;
         });
     }
 
@@ -59,6 +73,16 @@ class CompanyService
 
             $company->update($data);
 
+            $admins = User::role("Super Admin")->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(
+                    new CompanyActionNotification(
+                        "Company {$company->name} updated successfully."
+                    )
+                );
+            }
+
             return $company->fresh();
         });
     }
@@ -69,6 +93,7 @@ class CompanyService
     public function delete(Company $company): bool
     {
         return DB::transaction(function () use ($company) {
+            $companyName = $company->name;
             // Delete logo
             if (
                 $company->logo &&
@@ -86,7 +111,19 @@ class CompanyService
             $company->departments()->delete();
 
             // Soft delete company
-            return $company->delete();
+            $deleted = $company->delete();
+
+            $admins = User::role("Super Admin")->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(
+                    new CompanyActionNotification(
+                        "Company {$companyName} deleted successfully."
+                    )
+                );
+            }
+
+            return $deleted;
         });
     }
 
@@ -99,6 +136,17 @@ class CompanyService
                 "status" => $newStatus,
                 "updated_by" => Auth::id(),
             ]);
+            $statusText = $newStatus ? "activated" : "deactivated";
+
+            $admins = User::role("Super Admin")->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(
+                    new CompanyActionNotification(
+                        "Company {$company->name} {$statusText} successfully."
+                    )
+                );
+            }
 
             // Company Deactivated
             if (!$newStatus) {
@@ -159,7 +207,19 @@ class CompanyService
     public function restore(Company $company): bool
     {
         return DB::transaction(function () use ($company) {
-            return $company->restore();
+            $restored = $company->restore();
+
+            $admins = User::role("Super Admin")->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(
+                    new CompanyActionNotification(
+                        "Company {$company->name} restored successfully."
+                    )
+                );
+            }
+
+            return $restored;
         });
     }
     //Email Exists Except Current Company
@@ -295,5 +355,17 @@ class CompanyService
         }
 
         return $query->where("name", "like", "%{$companyName}%")->first();
+    }
+    public function sendBulkNotification(string $action, Company $company): void
+    {
+        $admins = User::role("Super Admin")->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(
+                new CompanyActionNotification(
+                    "Company {$company->name} {$action} successfully."
+                )
+            );
+        }
     }
 }

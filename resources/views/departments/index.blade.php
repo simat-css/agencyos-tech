@@ -511,7 +511,7 @@ value="{{ $department->id }}">
                         <form
                         action="{{ route('departments.destroy',$department) }}"
                         method="POST"
-                        class="d-inline">
+                        class="d-inline delete-department-form">
 
 
                             @csrf
@@ -519,8 +519,8 @@ value="{{ $department->id }}">
 
 
                             <button
-                            class="btn btn-danger btn-sm"
-                            onclick="return confirm('Delete this department?')">
+    type="button"
+    class="btn btn-danger btn-sm delete-department-btn">
 
 
                                 <i class="fas fa-trash"></i>
@@ -814,7 +814,83 @@ function bulkAction(action) {
 
     document.getElementById('bulk-deactivate')
     ?.addEventListener('click',()=>bulkAction('deactivate'));
+document.querySelectorAll('.delete-department-btn')
+.forEach(function(button){
 
+    button.addEventListener('click', function(){
+
+        let form = this.closest('form');
+
+        Swal.fire({
+            title: 'Delete Department?',
+            text: 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel'
+        })
+        .then((result) => {
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            fetch(form.action, {
+
+                method: 'POST',
+
+                headers: {
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .content,
+
+                    'Accept': 'application/json'
+                },
+
+                body: new FormData(form)
+
+            })
+
+            .then(async response => {
+
+                let data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message);
+                }
+
+                return data;
+            })
+
+            .then(data => {
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: data.message
+                });
+
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+
+            })
+
+            .catch(error => {
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Notice',
+                    text: error.message
+                });
+
+            });
+
+        });
+
+    });
+
+});
 
 });
 
