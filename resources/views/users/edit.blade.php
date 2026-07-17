@@ -448,3 +448,43 @@
 
 
 @endsection
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const companySelect = document.getElementById('company_id');
+    const departmentSelect = document.getElementById('department_id');
+
+    if (!companySelect || !departmentSelect) {
+        return;
+    }
+
+    companySelect.addEventListener('change', function () {
+
+        const companyId = this.value;
+
+        fetch(`/users/companies/${companyId}/departments`)
+        .then(response => response.json())
+        .then(data => {
+
+            departmentSelect.innerHTML =
+                '<option value="">Select Department</option>';
+
+            data.forEach(function (department) {
+
+                departmentSelect.innerHTML +=
+                    `<option value="${department.id}">
+                        ${department.name}
+                    </option>`;
+            });
+
+        })
+        .catch(error => {
+            console.error(error);
+        });
+
+    });
+
+});
+</script>
+@endpush

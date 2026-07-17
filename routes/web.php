@@ -17,10 +17,8 @@ use App\Http\Controllers\NotificationController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : view('welcome');
+Route::get("/", function () {
+    return auth()->check() ? redirect()->route("dashboard") : view("welcome");
 });
 
 /*
@@ -29,10 +27,9 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/dashboard',
-[DashboardController::class,'index'])
-->middleware(['auth','verified'])
-->name('dashboard');
+Route::get("/dashboard", [DashboardController::class, "index"])
+    ->middleware(["auth", "verified"])
+    ->name("dashboard");
 
 /*
 |--------------------------------------------------------------------------
@@ -40,8 +37,7 @@ Route::get('/dashboard',
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth'])->group(function () {
-
+Route::middleware(["auth"])->group(function () {
     /*
     |--------------------------------------------------------------------------
     | Profile
@@ -49,19 +45,14 @@ Route::middleware(['auth'])->group(function () {
     */
 
     Route::controller(ProfileController::class)
-        ->prefix('profile')
-        ->name('profile.')
+        ->prefix("profile")
+        ->name("profile.")
         ->group(function () {
+            Route::get("/", "edit")->name("edit");
 
-            Route::get('/', 'edit')
-                ->name('edit');
+            Route::patch("/", "update")->name("update");
 
-            Route::patch('/', 'update')
-                ->name('update');
-
-            Route::delete('/', 'destroy')
-                ->name('destroy');
-
+            Route::delete("/", "destroy")->name("destroy");
         });
 
     /*
@@ -70,99 +61,114 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::prefix('companies')
-        ->name('companies.')
+    Route::prefix("companies")
+        ->name("companies.")
         ->group(function () {
+            Route::get("/", [CompanyController::class, "index"])
+                ->middleware("permission:companies.view")
+                ->name("index");
 
-            Route::get('/', [CompanyController::class, 'index'])
-                ->middleware('permission:companies.view')
-                ->name('index');
+            Route::get("/create", [CompanyController::class, "create"])
+                ->middleware("permission:companies.create")
+                ->name("create");
 
-            Route::get('/create', [CompanyController::class, 'create'])
-                ->middleware('permission:companies.create')
-                ->name('create');
+            Route::post("/", [CompanyController::class, "store"])
+                ->middleware("permission:companies.create")
+                ->name("store");
 
-            Route::post('/', [CompanyController::class, 'store'])
-                ->middleware('permission:companies.create')
-                ->name('store');
+            Route::get("/{company}", [CompanyController::class, "show"])
+                ->middleware("permission:companies.view")
+                ->name("show");
 
-            Route::get('/{company}', [CompanyController::class, 'show'])
-                ->middleware('permission:companies.view')
-                ->name('show');
+            Route::get("/{company}/edit", [CompanyController::class, "edit"])
+                ->middleware("permission:companies.edit")
+                ->name("edit");
 
-            Route::get('/{company}/edit', [CompanyController::class, 'edit'])
-                ->middleware('permission:companies.edit')
-                ->name('edit');
+            Route::put("/{company}", [CompanyController::class, "update"])
+                ->middleware("permission:companies.edit")
+                ->name("update");
 
-            Route::put('/{company}', [CompanyController::class, 'update'])
-                ->middleware('permission:companies.edit')
-                ->name('update');
+            Route::delete("/{company}", [CompanyController::class, "destroy"])
+                ->middleware("permission:companies.delete")
+                ->name("destroy");
 
-            Route::delete('/{company}', [CompanyController::class, 'destroy'])
-                ->middleware('permission:companies.delete')
-                ->name('destroy');
+            Route::patch("/{company}/toggle-status", [
+                CompanyController::class,
+                "toggleStatus",
+            ])
+                ->middleware("permission:companies.edit")
+                ->name("toggle-status");
 
-            Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])
-                ->middleware('permission:companies.edit')
-                ->name('toggle-status');
-
-                Route::post('/bulk-action', [CompanyController::class, 'bulkAction'])
-            ->middleware('permission:companies.edit')
-            ->name('bulk-action');
-
+            Route::post("/bulk-action", [
+                CompanyController::class,
+                "bulkAction",
+            ])
+                ->middleware("permission:companies.edit")
+                ->name("bulk-action");
         });
-        
-//Ai Features
-Route::post('/ai/execute', [AIController::class, 'execute'])
-    ->name('ai.execute');
+
+    //Ai Features
+    Route::post("/ai/execute", [AIController::class, "execute"])
+        ->middleware("permission:ai.commands.execute")
+        ->name("ai.execute");
     /*
     |--------------------------------------------------------------------------
     | Department Management
     |--------------------------------------------------------------------------
     */
 
-Route::prefix('departments')
-    ->name('departments.')
-    ->group(function () {
+    Route::prefix("departments")
+        ->name("departments.")
+        ->group(function () {
+            Route::get("/", [DepartmentController::class, "index"])
+                ->middleware("permission:departments.view")
+                ->name("index");
 
-        Route::get('/', [DepartmentController::class, 'index'])
-            ->middleware('permission:departments.view')
-            ->name('index');
+            Route::get("/create", [DepartmentController::class, "create"])
+                ->middleware("permission:departments.create")
+                ->name("create");
 
-        Route::get('/create', [DepartmentController::class, 'create'])
-            ->middleware('permission:departments.create')
-            ->name('create');
+            Route::post("/", [DepartmentController::class, "store"])
+                ->middleware("permission:departments.create")
+                ->name("store");
 
-        Route::post('/', [DepartmentController::class, 'store'])
-            ->middleware('permission:departments.create')
-            ->name('store');
+            Route::get("/{department}", [DepartmentController::class, "show"])
+                ->middleware("permission:departments.view")
+                ->name("show");
 
-        Route::get('/{department}', [DepartmentController::class, 'show'])
-            ->middleware('permission:departments.view')
-            ->name('show');
+            Route::get("/{department}/edit", [
+                DepartmentController::class,
+                "edit",
+            ])
+                ->middleware("permission:departments.edit")
+                ->name("edit");
 
-        Route::get('/{department}/edit', [DepartmentController::class, 'edit'])
-            ->middleware('permission:departments.edit')
-            ->name('edit');
+            Route::put("/{department}", [DepartmentController::class, "update"])
+                ->middleware("permission:departments.edit")
+                ->name("update");
 
-        Route::put('/{department}', [DepartmentController::class, 'update'])
-            ->middleware('permission:departments.edit')
-            ->name('update');
+            Route::delete("/{department}", [
+                DepartmentController::class,
+                "destroy",
+            ])
+                ->middleware("permission:departments.delete")
+                ->name("destroy");
 
-        Route::delete('/{department}', [DepartmentController::class, 'destroy'])
-            ->middleware('permission:departments.delete')
-            ->name('destroy');
+            Route::patch("/{department}/toggle-status", [
+                DepartmentController::class,
+                "toggleStatus",
+            ])
+                ->middleware("permission:departments.edit")
+                ->name("toggle-status");
 
-        Route::patch('/{department}/toggle-status', [DepartmentController::class, 'toggleStatus'])
-            ->middleware('permission:departments.edit')
-            ->name('toggle-status');
-
-        Route::post('/bulk-action', [DepartmentController::class, 'bulkAction'])
-            ->middleware('permission:departments.edit')
-            ->name('bulk-action');
-    });
-
-    }); // Auth middleware group close here
+            Route::post("/bulk-action", [
+                DepartmentController::class,
+                "bulkAction",
+            ])
+                ->middleware("permission:departments.edit")
+                ->name("bulk-action");
+        });
+}); // Auth middleware group close here
 
 /*
 |--------------------------------------------------------------------------
@@ -179,135 +185,141 @@ Route::prefix('departments')
 //       Route::view('/user-dashboard-demo', 'dashboard.user')
 //     ->name('user-dashboard-demo');
 //global search
-Route::get('/global-search',
-    [SearchController::class,'search']
-)->name('global.search');
+Route::get("/global-search", [SearchController::class, "search"])->name(
+    "global.search"
+);
 
-    
 // Roles
 
-Route::middleware(['auth'])
-    ->prefix('roles')
-    ->name('roles.')
+Route::middleware(["auth"])
+    ->prefix("roles")
+    ->name("roles.")
     ->group(function () {
+        Route::get("/", [RoleController::class, "index"])
+            ->middleware("permission:roles.view")
+            ->name("index");
 
-        Route::get('/', [RoleController::class, 'index'])
-            ->middleware('permission:roles.view')
-            ->name('index');
+        Route::get("/create", [RoleController::class, "create"])
+            ->middleware("permission:roles.create")
+            ->name("create");
 
-        Route::get('/create', [RoleController::class, 'create'])
-            ->middleware('permission:roles.create')
-            ->name('create');
+        Route::post("/", [RoleController::class, "store"])
+            ->middleware("permission:roles.create")
+            ->name("store");
 
-        Route::post('/', [RoleController::class, 'store'])
-            ->middleware('permission:roles.create')
-            ->name('store');
+        Route::get("/{role}", [RoleController::class, "show"])
+            ->middleware("permission:roles.view")
+            ->name("show");
 
-        Route::get('/{role}', [RoleController::class, 'show'])
-            ->middleware('permission:roles.view')
-            ->name('show');
+        Route::get("/{role}/edit", [RoleController::class, "edit"])
+            ->middleware("permission:roles.edit")
+            ->name("edit");
 
-        Route::get('/{role}/edit', [RoleController::class, 'edit'])
-            ->middleware('permission:roles.edit')
-            ->name('edit');
+        Route::put("/{role}", [RoleController::class, "update"])
+            ->middleware("permission:roles.edit")
+            ->name("update");
 
-        Route::put('/{role}', [RoleController::class, 'update'])
-            ->middleware('permission:roles.edit')
-            ->name('update');
-
-        Route::delete('/{role}', [RoleController::class, 'destroy'])
-            ->middleware('permission:roles.delete')
-            ->name('destroy');
-
+        Route::delete("/{role}", [RoleController::class, "destroy"])
+            ->middleware("permission:roles.delete")
+            ->name("destroy");
     });
 
-    //User Module 
-    Route::prefix('users')
-->name('users.')
-->group(function () {
+//User Module
+Route::prefix("users")
+    ->name("users.")
+    ->group(function () {
+        Route::get("/", [UserController::class, "index"])
+            ->middleware("permission:users.view")
+            ->name("index");
 
-        Route::get('/', [UserController::class, 'index'])
-            ->middleware('permission:users.view')
-            ->name('index');
+        Route::get("/create", [UserController::class, "create"])
+            ->middleware("permission:users.create")
+            ->name("create");
 
-        Route::get('/create', [UserController::class, 'create'])
-            ->middleware('permission:users.create')
-            ->name('create');
+        Route::post("/", [UserController::class, "store"])
+            ->middleware("permission:users.create")
+            ->name("store");
 
-        Route::post('/', [UserController::class, 'store'])
-            ->middleware('permission:users.create')
-            ->name('store');
+        // EXPORT HERE
+        Route::get("/export", [UserController::class, "export"])
+            ->middleware("permission:users.export")
+            ->name("export");
 
-    // EXPORT HERE
-    Route::get('/export', [UserController::class, 'export'])
-        ->middleware('permission:users.export')
-        ->name('export');
+        Route::post("/import", [UserController::class, "import"])
+            ->middleware("permission:users.import")
+            ->name("import");
 
-  Route::post('/import', [UserController::class, 'import'])
-    ->middleware('permission:users.import')
-    ->name('import');   
+        Route::post("/bulk-action", [UserController::class, "bulkAction"])
+            ->middleware("permission:users.edit")
+            ->name("bulk-action");
 
- Route::post('/bulk-action',[UserController::class,'bulkAction'])
-->middleware('permission:users.edit')
-->name('bulk-action');
+        Route::patch("/{user}/toggle-status", [
+            UserController::class,
+            "toggleStatus",
+        ])
+            ->middleware("permission:users.edit")
+            ->name("toggle-status");
 
-            Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus'])
-           ->middleware('permission:users.edit')
-            ->name('toggle-status');
+        Route::get("/{user}", [UserController::class, "show"])
+            ->middleware("permission:users.view")
+            ->name("show");
 
-        Route::get('/{user}', [UserController::class, 'show'])
-            ->middleware('permission:users.view')
-            ->name('show');
+        Route::get("/{user}/edit", [UserController::class, "edit"])
+            ->middleware("permission:users.edit")
+            ->name("edit");
 
-      Route::get('/{user}/edit', [UserController::class, 'edit'])
-            ->middleware('permission:users.edit')
-            ->name('edit');
+        Route::put("/{user}", [UserController::class, "update"])
+            ->middleware("permission:users.edit")
+            ->name("update");
 
-        Route::put('/{user}', [UserController::class, 'update'])
-            ->middleware('permission:users.edit')
-            ->name('update');
+        Route::delete("/{user}", [UserController::class, "destroy"])
+            ->middleware("permission:users.delete")
+            ->name("destroy");
 
-       Route::delete('/{user}', [UserController::class, 'destroy'])
-            ->middleware('permission:users.delete')
-            ->name('destroy');
-
-                        //for loading department in create user
-            Route::get('/companies/{company}/departments',
-          [UserController::class, 'getDepartments']
-          )->name('companies.departments');
-});
+        //for loading department in create user
+        Route::get("/companies/{company}/departments", [
+            UserController::class,
+            "getDepartments",
+        ])->name("companies.departments");
+    });
 
 // Notification Center
-Route::middleware('auth')
-    ->prefix('notifications')
-    ->name('notifications.')
+Route::middleware("auth")
+    ->prefix("notifications")
+    ->name("notifications.")
     ->group(function () {
+        Route::get("/", [NotificationController::class, "index"])
+            ->middleware("permission:notifications.view")
+            ->name("index");
 
-        Route::get(
-            '/',
-            [NotificationController::class, 'index']
-        )->name('index');
+        Route::post("/{id}/read", [NotificationController::class, "markAsRead"])
+            ->middleware("permission:notifications.view")
+            ->name("read");
 
-        Route::post(
-            '/{id}/read',
-            [NotificationController::class, 'markAsRead']
-        )->name('read');
+        Route::post("/mark-all-read", [
+            NotificationController::class,
+            "markAllRead",
+        ])
+            ->middleware("permission:notifications.view")
+            ->name("read-all");
 
-        Route::post(
-            '/mark-all-read',
-            [NotificationController::class, 'markAllRead']
-        )->name('read-all');
+        Route::delete("/{id}", [NotificationController::class, "destroy"])
+            ->middleware("permission:notifications.delete")
+            ->name("destroy");
 
-        Route::delete(
-            '/{id}',
-            [NotificationController::class, 'destroy']
-        )->name('destroy');
-        
-        Route::post(
-    '/bulk-delete',
-    [NotificationController::class, 'bulkDelete']
-)
-->name('bulk-delete');
+        Route::post("/bulk-delete", [
+            NotificationController::class,
+            "bulkDelete",
+        ])
+            ->middleware("permission:notifications.delete")
+            ->name("bulk-delete");
     });
 
-require __DIR__ . '/auth.php';
+//Profile
+Route::get("/my-profile", function () {
+    return view("profile.show");
+})
+    ->middleware("auth")
+    ->name("profile.show");
+
+require __DIR__ . "/auth.php";

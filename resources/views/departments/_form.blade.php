@@ -14,7 +14,7 @@
     {{ isset($selectedCompany) ? 'disabled' : '' }}>
 
     <option value="">
-        Select Company
+         {{ isset($selectedCompany) ? 'Company Inactive' : ' Select Company' }}
     </option>
 
     @foreach($companies as $company)

@@ -158,6 +158,12 @@ class CompanyService
                         "auto_deactivated" => true,
                         "updated_by" => Auth::id(),
                     ]);
+
+                User::where("company_id", $company->id)
+                    ->where("status", 1)
+                    ->update([
+                        "status" => 0,
+                    ]);
             }
 
             return $company->fresh();

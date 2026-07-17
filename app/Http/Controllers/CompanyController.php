@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\Company;
+use App\Models\User;
 use App\Services\CompanyService;
 use function activity;
 use Illuminate\Support\Facades\Auth;
@@ -42,11 +43,7 @@ class CompanyController extends Controller
     public function index()
     {
         $query = Company::query();
-        if (
-            auth()
-                ->user()
-                ->hasRole("Company Admin")
-        ) {
+        if (!auth()->user()->hasRole("Super Admin")) {
             $query->where("id", auth()->user()->company_id);
         }
         if (request("search")) {
@@ -66,11 +63,7 @@ class CompanyController extends Controller
         // $totalCompanies = Company::count();
         // $activeCompanies = Company::where('status', 1)->count();
         // $inactiveCompanies = Company::where('status', 0)->count();
-        if (
-            auth()
-                ->user()
-                ->hasRole("Company Admin")
-        ) {
+        if (!auth()->user()->hasRole("Super Admin")) {
             $totalCompanies = Company::where(
                 "id",
                 auth()->user()->company_id
@@ -183,7 +176,24 @@ class CompanyController extends Controller
      */
     public function destroy(Company $company)
     {
+        $hasUsers = $company
+            ->departments()
+            ->whereHas("users", function ($query) use ($company) {
+                $query->where("company_id", $company->id);
+            })
+            ->exists();
+
+        if ($hasUsers) {
+            return redirect()
+                ->route("companies.index")
+                ->with(
+                    "error",
+                    "Cannot delete company '{$company->name}'. One or more departments contain assigned users."
+                );
+        }
+
         $oldData = $company->toArray();
+
         $this->companyService->delete($company);
 
         ActivityHelper::log(
@@ -228,76 +238,160 @@ class CompanyController extends Controller
             case "activate":
                 $companies = Company::whereIn("id", $request->ids)->get();
 
+                $activated = 0;
+                $alreadyActive = 0;
+
                 foreach ($companies as $company) {
-                    if (!$company->status) {
-                        $oldData = $company->toArray();
-
-                        $company->update([
-                            "status" => 1,
-                            "updated_by" => Auth::id(),
-                        ]);
-
-                        // Departments intentionally inactive rahenge
-
-                        ActivityHelper::log(
-                            Auth::user(),
-                            $company,
-                            "company",
-                            "bulk_activated",
-                            $oldData,
-                            $company->fresh()->toArray()
-                        );
-                        $this->companyService->sendBulkNotification(
-                            "bulk activated",
-                            $company
-                        );
+                    if ($company->status) {
+                        $alreadyActive++;
+                        continue;
                     }
+
+                    $oldData = $company->toArray();
+
+                    $company->update([
+                        "status" => 1,
+                        "updated_by" => Auth::id(),
+                    ]);
+
+                    // Departments intentionally inactive rahenge
+
+                    ActivityHelper::log(
+                        Auth::user(),
+                        $company,
+                        "company",
+                        "bulk_activated",
+                        $oldData,
+                        $company->fresh()->toArray()
+                    );
+
+                    $this->companyService->sendBulkNotification(
+                        "bulk activated",
+                        $company
+                    );
+
+                    $activated++;
                 }
 
-                break;
+                if ($activated === 0) {
+                    return response()->json(
+                        [
+                            "success" => false,
+                            "message" =>
+                                "All selected companies are already active.",
+                        ],
+                        422
+                    );
+                }
+
+                $message = "{$activated} company(s) activated.";
+
+                if ($alreadyActive > 0) {
+                    $message .= " {$alreadyActive} already active.";
+                }
+
+                return response()->json([
+                    "success" => true,
+                    "message" => $message,
+                ]);
 
             case "deactivate":
                 $companies = Company::whereIn("id", $request->ids)->get();
 
-                foreach ($companies as $company) {
-                    if ($company->status) {
-                        $oldData = $company->toArray();
+                $deactivated = 0;
+                $alreadyInactive = 0;
 
-                        $company->update([
+                foreach ($companies as $company) {
+                    if (!$company->status) {
+                        $alreadyInactive++;
+                        continue;
+                    }
+
+                    $oldData = $company->toArray();
+
+                    $company->update([
+                        "status" => 0,
+                        "updated_by" => Auth::id(),
+                    ]);
+
+                    $company
+                        ->departments()
+                        ->where("status", 1)
+                        ->update([
                             "status" => 0,
+                            "auto_deactivated" => true,
                             "updated_by" => Auth::id(),
                         ]);
 
-                        $company
-                            ->departments()
-                            ->where("status", 1)
-                            ->update([
-                                "status" => 0,
-                                "auto_deactivated" => true,
-                                "updated_by" => Auth::id(),
-                            ]);
+                    User::where("company_id", $company->id)
+                        ->where("status", 1)
+                        ->update([
+                            "status" => 0,
+                        ]);
 
-                        ActivityHelper::log(
-                            Auth::user(),
-                            $company,
-                            "company",
-                            "bulk_deactivated",
-                            $oldData,
-                            $company->fresh()->toArray()
-                        );
-                        $this->companyService->sendBulkNotification(
-                            "bulk deactivated",
-                            $company
-                        );
-                    }
+                    ActivityHelper::log(
+                        Auth::user(),
+                        $company,
+                        "company",
+                        "bulk_deactivated",
+                        $oldData,
+                        $company->fresh()->toArray()
+                    );
+
+                    $this->companyService->sendBulkNotification(
+                        "bulk deactivated",
+                        $company
+                    );
+
+                    $deactivated++;
                 }
 
-                break;
+                if ($deactivated === 0) {
+                    return response()->json(
+                        [
+                            "success" => false,
+                            "message" =>
+                                "All selected companies are already inactive.",
+                        ],
+                        422
+                    );
+                }
+
+                $message = "{$deactivated} company(s) deactivated.";
+
+                if ($alreadyInactive > 0) {
+                    $message .= " {$alreadyInactive} already inactive.";
+                }
+
+                return response()->json([
+                    "success" => true,
+                    "message" => $message,
+                ]);
 
             case "delete":
                 $companies = Company::whereIn("id", $request->ids)->get();
 
+                $deletedCount = 0;
+
+                $deletedCompanies = [];
+
+                $skippedCompanies = [];
+
                 foreach ($companies as $company) {
+                    $hasUsers = $company
+                        ->departments()
+                        ->whereHas("users", function ($query) use ($company) {
+                            $query->where("company_id", $company->id);
+                        })
+                        ->exists();
+
+                    if ($hasUsers) {
+                        $skippedCompanies[] =
+                            $company->name . " (assigned users found)";
+
+                        continue;
+                    }
+
                     $oldData = $company->toArray();
 
                     $this->companyService->delete($company);
@@ -310,14 +404,59 @@ class CompanyController extends Controller
                         $oldData,
                         []
                     );
+
+                    $deletedCompanies[] = $company->name;
+
+                    $deletedCount++;
                 }
 
-                break;
+                $message = "";
+
+                if ($deletedCount > 0) {
+                    $message = "{$deletedCount} company(s) deleted successfully.";
+
+                    if (!empty($deletedCompanies)) {
+                        $message .=
+                            "\n\nDeleted: " . implode(", ", $deletedCompanies);
+                    }
+
+                    if (!empty($skippedCompanies)) {
+                        $message .=
+                            "\n\nSkipped: " . implode(", ", $skippedCompanies);
+                    }
+                } else {
+                    $message = "No company was deleted.";
+
+                    if (!empty($skippedCompanies)) {
+                        $message .=
+                            "\n\nSkipped: " . implode(", ", $skippedCompanies);
+                    }
+                }
+
+                return response()->json(
+                    [
+                        "success" => $deletedCount > 0,
+
+                        "deleted" => $deletedCount,
+
+                        "skipped" => count($skippedCompanies),
+
+                        "message" => $message,
+
+                        "deleted_companies" => $deletedCompanies,
+
+                        "skipped_companies" => $skippedCompanies,
+                    ],
+                    $deletedCount > 0 ? 200 : 422
+                );
         }
 
-        return response()->json([
-            "success" => true,
-            "message" => "Action completed successfully.",
-        ]);
+        return response()->json(
+            [
+                "success" => false,
+                "message" => "Invalid action.",
+            ],
+            422
+        );
     }
 }

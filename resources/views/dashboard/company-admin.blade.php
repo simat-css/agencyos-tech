@@ -24,7 +24,7 @@
 
                 <div>
                     <small>Total Employees</small>
-                    <h2>156</h2>
+                    <h2>{{ $stats['employees'] }}</h2>
                 </div>
 
                 <div class="stat-icon icon-primary">
@@ -41,7 +41,7 @@
 
                 <div>
                     <small>Departments</small>
-                    <h2>8</h2>
+                   <h2>{{ $stats['departments'] }}</h2>
                 </div>
 
                 <div class="stat-icon icon-success">
@@ -57,8 +57,8 @@
             <div class="card-body d-flex justify-content-between">
 
                 <div>
-                    <small>Projects</small>
-                    <h2>24</h2>
+                    <small>Active Employees</small>
+                   <h2>{{ $stats['activeEmployees'] }}</h2>
                 </div>
 
                 <div class="stat-icon icon-warning">
@@ -74,8 +74,8 @@
             <div class="card-body d-flex justify-content-between">
 
                 <div>
-                    <small>Clients</small>
-                    <h2>18</h2>
+                    <small>Inactive Employees</small>
+                    <h2>{{ $stats['inactiveEmployees'] }}</h2>
                 </div>
 
                 <div class="stat-icon icon-danger">
@@ -210,55 +210,158 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    let growthChart = new ApexCharts(
-        document.querySelector("#employeeGrowthChart"),
-        {
-            chart: {
-                type: 'area',
-                height: 350,
-                toolbar: { show: false }
-            },
-            series: [{
-                name: 'Employees',
-                data: [20, 35, 45, 55, 75, 90, 120]
-            }],
-            xaxis: {
-                categories: ['Jan','Feb','Mar','Apr','May','Jun','Jul']
-            },
-            colors: ['#2563EB'],
-            stroke: {
-                curve: 'smooth',
-                width: 3
+    /*
+    |--------------------------------------------------------------------------
+    | Employee Growth Chart
+    |--------------------------------------------------------------------------
+    */
+
+    let growthElement = document.querySelector(
+        "#employeeGrowthChart"
+    );
+
+    if (growthElement) {
+
+        let growthChart = new ApexCharts(
+            growthElement,
+            {
+                chart: {
+                    type: 'area',
+                    height: 350,
+                    toolbar: {
+                        show: false
+                    }
+                },
+
+                series: [
+                    {
+                        name: 'Employees',
+
+                        data: @json(
+                            array_values($employeeGrowthData)
+                        )
+                    }
+                ],
+
+                xaxis: {
+                    categories: @json(
+                        array_keys($employeeGrowthData)
+                    )
+                },
+
+                colors: [
+                    '#2563EB'
+                ],
+
+                stroke: {
+                    curve: 'smooth',
+                    width: 3
+                },
+
+                dataLabels: {
+                    enabled: false
+                },
+
+                fill: {
+                    type: 'gradient',
+
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.4,
+                        opacityTo: 0.1
+                    }
+                },
+
+                tooltip: {
+                    y: {
+                        formatter: function (value) {
+
+                            return value + " Employees";
+
+                        }
+                    }
+                }
             }
-        }
+        );
+
+        growthChart.render();
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Employees By Department
+    |--------------------------------------------------------------------------
+    */
+
+    let departmentElement = document.querySelector(
+        "#departmentChart"
     );
 
-    growthChart.render();
+    if (departmentElement) {
 
-    let departmentChart = new ApexCharts(
-        document.querySelector("#departmentChart"),
-        {
-            chart: {
-                type: 'donut',
-                height: 350
-            },
-            series: [40, 25, 15, 20],
-            labels: [
-                'Development',
-                'HR',
-                'Sales',
-                'Marketing'
-            ],
-            colors: [
-                '#2563EB',
-                '#22C55E',
-                '#F59E0B',
-                '#EF4444'
-            ]
-        }
-    );
+        let departmentChart = new ApexCharts(
+            departmentElement,
+            {
+                chart: {
+                    type: 'donut',
+                    height: 350
+                },
 
-    departmentChart.render();
+                series: @json(
+                    $departmentData
+                        ->pluck('users_count')
+                        ->toArray()
+                ),
+
+                labels: @json(
+                    $departmentData
+                        ->pluck('name')
+                        ->toArray()
+                ),
+
+                colors: [
+                    '#2563EB',
+                    '#22C55E',
+                    '#F59E0B',
+                    '#EF4444',
+                    '#8B5CF6',
+                    '#06B6D4',
+                    '#EC4899',
+                    '#84CC16'
+                ],
+
+                legend: {
+                    position: 'bottom'
+                },
+
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '65%'
+                        }
+                    }
+                },
+
+                dataLabels: {
+                    enabled: true
+                },
+
+                tooltip: {
+                    y: {
+                        formatter: function (value) {
+
+                            return value + " Employees";
+
+                        }
+                    }
+                }
+            }
+        );
+
+        departmentChart.render();
+
+    }
 
 });
 

@@ -432,6 +432,6 @@
 @endsection
 @push('scripts')
 
-@vite('resources/js/pages/notifications.js')
+<script src="{{ asset('assets/js/pages/notifications.js') }}"></script>
 
 @endpush

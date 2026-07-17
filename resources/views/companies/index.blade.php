@@ -429,6 +429,7 @@
                             @endif
 
                             <button
+                               type="button"
                                 class="btn btn-sm btn-danger"
                                 data-bs-toggle="modal"
                                 data-bs-target="#deleteModal{{ $company->id }}">

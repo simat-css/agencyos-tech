@@ -31,11 +31,7 @@ class UserController extends Controller
     {
         $query = User::with(["company", "department", "roles"]);
 
-        if (
-            auth()
-                ->user()
-                ->hasRole("Company Admin")
-        ) {
+        if (!auth()->user()->hasRole("Super Admin")) {
             $query->where("company_id", auth()->user()->company_id);
         }
 
@@ -91,11 +87,7 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (
-            auth()
-                ->user()
-                ->hasRole("Company Admin")
-        ) {
+ if (!auth()->user()->hasRole("Super Admin")) {
             $companies = Company::where(
                 "id",
                 auth()->user()->company_id
@@ -112,11 +104,7 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (
-            auth()
-                ->user()
-                ->hasRole("Company Admin")
-        ) {
+   if (!auth()->user()->hasRole("Super Admin")) {
             $departments = Department::active()
                 ->where("company_id", auth()->user()->company_id)
                 ->orderBy("name")
@@ -135,11 +123,7 @@ class UserController extends Controller
 
         $statsQuery = User::query();
 
-        if (
-            auth()
-                ->user()
-                ->hasRole("Company Admin")
-        ) {
+    if (!auth()->user()->hasRole("Super Admin")) {
             $statsQuery->where("company_id", auth()->user()->company_id);
         }
 
@@ -545,30 +529,32 @@ class UserController extends Controller
     | Bulk Action
     |--------------------------------------------------------------------------
     */
-
     public function bulkAction(Request $request)
     {
         $validated = $request->validate([
             "action" => "required|in:activate,deactivate,delete",
-
             "ids" => "required|array|min:1",
-
             "ids.*" => "exists:users,id",
         ]);
 
         try {
-            $this->userService->bulkAction($validated);
+            $result = $this->userService->bulkAction($validated);
 
-            return response()->json([
-                "success" => true,
+            if (!$result || !is_array($result)) {
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" => "Bulk action returned invalid response.",
+                    ],
+                    500
+                );
+            }
 
-                "message" => "Action completed successfully.",
-            ]);
+            return response()->json($result, $result["success"] ? 200 : 422);
         } catch (\Exception $e) {
             return response()->json(
                 [
                     "success" => false,
-
                     "message" => $e->getMessage(),
                 ],
                 403

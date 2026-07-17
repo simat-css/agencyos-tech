@@ -6,6 +6,8 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
+         {{-- Favicon --}}
+        <link rel="icon"  type="image/svg+xml"  href="{{ asset('favicon.svg') }}">
         <link rel="stylesheet" href="{{ asset('adminlte/dist/css/adminlte.css') }}">
         <link rel="stylesheet" href="{{ asset('assets/css/agencyos.css') }}">
         <!-- Fonts -->

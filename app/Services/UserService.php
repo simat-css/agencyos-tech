@@ -433,7 +433,7 @@ class UserService
 
         /*
     |--------------------------------------------------------------------------
-    | Super Admin Protection (Recommended)
+    | Super Admin Protection
     |--------------------------------------------------------------------------
     */
 
@@ -444,16 +444,36 @@ class UserService
             throw new \Exception("Super Admin status cannot be changed.");
         }
 
-        DB::transaction(function () use ($user, $authUser) {
-            $oldData = $user->toArray();
+        /*
+    |--------------------------------------------------------------------------
+    | Activation Validation
+    |--------------------------------------------------------------------------
+    */
+
+        $newStatus = !$user->status;
+
+        if ($newStatus) {
+            $check = $this->canActivateUser($user);
+
+            if (!$check["allowed"]) {
+                throw new \Exception($check["message"]);
+            }
+        }
+
+        DB::transaction(function () use ($user, $authUser, $newStatus) {
+            $oldData = $user
+                ->load(["company", "department", "roles"])
+                ->toArray();
 
             $oldData["roles"] = $user->roles->pluck("name")->toArray();
 
-            $user->status = !$user->status;
+            $user->status = $newStatus;
 
             $user->save();
 
-            $freshUser = $user->fresh();
+            $freshUser = $user
+                ->fresh()
+                ->load(["company", "department", "roles"]);
 
             $newData = $freshUser->toArray();
 
@@ -482,10 +502,10 @@ class UserService
         return $user;
     }
     /*
-    |--------------------------------------------------------------------------
-    | Bulk User Action
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| Bulk User Action
+|--------------------------------------------------------------------------
+*/
 
     public function bulkAction(array $data)
     {
@@ -503,12 +523,24 @@ class UserService
             throw new \Exception("Invalid bulk action.");
         }
 
-        $users = User::whereIn("id", $data["ids"])->get();
+        $users = User::with(["company", "department", "roles"])
+            ->whereIn("id", $data["ids"])
+            ->get();
+
         if ($users->isEmpty()) {
             throw new \Exception("No valid users selected.");
         }
 
-        DB::transaction(function () use ($users, $data, $authUser) {
+        $processedCount = 0;
+        $skippedUsers = [];
+
+        DB::transaction(function () use (
+            $users,
+            $data,
+            $authUser,
+            &$processedCount,
+            &$skippedUsers
+        ) {
             foreach ($users as $user) {
                 /*
             |--------------------------------------------------------------------------
@@ -516,10 +548,13 @@ class UserService
             |--------------------------------------------------------------------------
             */
 
-                if ($user->id === $authUser->id) {
-                    throw new \Exception(
-                        "You cannot perform bulk actions on your own account."
-                    );
+                if ($user->id == $authUser->id) {
+                    $skippedUsers[] = [
+                        "name" => $user->name,
+                        "reason" => "You cannot modify your own account.",
+                    ];
+
+                    continue;
                 }
 
                 /*
@@ -532,14 +567,17 @@ class UserService
                     $authUser->hasRole("Company Admin") &&
                     $user->company_id != $authUser->company_id
                 ) {
-                    throw new \Exception(
-                        "You cannot modify another company user."
-                    );
+                    $skippedUsers[] = [
+                        "name" => $user->name,
+                        "reason" => "User belongs to another company.",
+                    ];
+
+                    continue;
                 }
 
                 /*
             |--------------------------------------------------------------------------
-            | Super Admin Protection (Optional but Recommended)
+            | Super Admin Protection
             |--------------------------------------------------------------------------
             */
 
@@ -547,13 +585,36 @@ class UserService
                     $user->hasRole("Super Admin") &&
                     !$authUser->hasRole("Super Admin")
                 ) {
-                    throw new \Exception(
-                        "Super Admin accounts cannot be modified."
-                    );
+                    $skippedUsers[] = [
+                        "name" => $user->name,
+                        "reason" => "Super Admin accounts cannot be modified.",
+                    ];
+
+                    continue;
                 }
 
                 switch ($data["action"]) {
                     case "activate":
+                        if ($user->status == 1) {
+                            $skippedUsers[] = [
+                                "name" => $user->name,
+                                "reason" => "User is already active.",
+                            ];
+
+                            continue 2;
+                        }
+
+                        $check = $this->canActivateUser($user);
+
+                        if (!$check["allowed"]) {
+                            $skippedUsers[] = [
+                                "name" => $user->name,
+                                "reason" => $check["message"],
+                            ];
+
+                            continue 2;
+                        }
+
                         $oldData = $user->toArray();
 
                         $oldData["roles"] = $user->roles
@@ -567,6 +628,15 @@ class UserService
                         break;
 
                     case "deactivate":
+                        if ($user->status == 0) {
+                            $skippedUsers[] = [
+                                "name" => $user->name,
+                                "reason" => "User is already inactive.",
+                            ];
+
+                            continue 2;
+                        }
+
                         $oldData = $user->toArray();
 
                         $oldData["roles"] = $user->roles
@@ -578,7 +648,6 @@ class UserService
                         $message = "Your account has been deactivated.";
 
                         break;
-
                     case "delete":
                         if (!$authUser->can("users.delete")) {
                             throw new \Exception(
@@ -586,17 +655,16 @@ class UserService
                             );
                         }
 
+                        $oldData = $user->toArray();
+                        $oldData["roles"] = $user->roles
+                            ->pluck("name")
+                            ->toArray();
+
                         if ($user->profile_photo) {
                             Storage::disk("public")->delete(
                                 $user->profile_photo
                             );
                         }
-
-                        $oldData = $user->toArray();
-
-                        $oldData["roles"] = $user->roles
-                            ->pluck("name")
-                            ->toArray();
 
                         ActivityHelper::log(
                             $authUser,
@@ -607,20 +675,18 @@ class UserService
                             []
                         );
 
-                        $authUser->notify(
-                            new UserActionNotification(
-                                "User {$user->name} deleted through bulk action."
-                            )
-                        );
-
                         $user->delete();
+
+                        $processedCount++;
 
                         continue 2;
                 }
 
                 $user->save();
 
-                $freshUser = $user->fresh();
+                $freshUser = $user
+                    ->fresh()
+                    ->load(["company", "department", "roles"]);
 
                 $newData = $freshUser->toArray();
 
@@ -636,10 +702,71 @@ class UserService
                 );
 
                 $user->notify(new UserActionNotification($message));
+
+                $processedCount++;
             }
         });
 
-        return true;
+        if ($processedCount === 0) {
+            $reasons = collect($skippedUsers)
+                ->pluck("reason")
+                ->unique()
+                ->implode(" | ");
+
+            return [
+                "success" => false,
+                "processed" => 0,
+                "skipped" => $skippedUsers,
+                "message" => $reasons ?: "No users could be processed.",
+            ];
+        }
+
+        return [
+            "success" => true,
+            "processed" => $processedCount,
+            "skipped" => $skippedUsers,
+            "message" => "{$processedCount} user(s) processed successfully.",
+        ];
+    }
+
+    private function canActivateUser(User $user): array
+    {
+        if (!$user->company) {
+            return [
+                "allowed" => false,
+                "message" => "User company is not assigned.",
+            ];
+        }
+
+        if ($user->company->status == 0) {
+            return [
+                "allowed" => false,
+                "message" =>
+                    "Cannot activate user because company is inactive.",
+            ];
+        }
+
+        if ($user->department_id) {
+            if (!$user->department) {
+                return [
+                    "allowed" => false,
+                    "message" => "Assigned department not found.",
+                ];
+            }
+
+            if ($user->department->status == 0) {
+                return [
+                    "allowed" => false,
+                    "message" =>
+                        "Cannot activate user because department is inactive.",
+                ];
+            }
+        }
+
+        return [
+            "allowed" => true,
+            "message" => "User can be activated.",
+        ];
     }
 
     //AI Part

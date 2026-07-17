@@ -74,7 +74,7 @@
                             </a>
 
                         </li>
-                        @role('Super Admin')
+                        {{-- @role('Super Admin') --}}
                         <li class="nav-item">
 
                             <a href="{{ route('companies.create') }}"
@@ -86,7 +86,7 @@
                             </a>
 
                         </li>
-                        @endrole
+                        {{-- @endrole --}}
 
                     </ul>
 
