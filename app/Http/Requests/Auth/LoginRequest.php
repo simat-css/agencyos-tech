@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use App\Notifications\SecurityEventNotification;
 
 class LoginRequest extends FormRequest
 {
@@ -42,13 +44,35 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+        // if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        //     RateLimiter::hit($this->throttleKey());
 
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
-            ]);
+        //     throw ValidationException::withMessages([
+        //         'email' => trans('auth.failed'),
+        //     ]);
+        // }
+
+        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+
+    RateLimiter::hit($this->throttleKey());
+
+    if (RateLimiter::attempts($this->throttleKey()) === 5) {
+
+        $user = User::where('email', $this->email)->first();
+
+        if ($user) {
+            $user->notify(
+                new SecurityEventNotification(
+                    "Security Alert: 5 failed login attempts were detected on your account. Your account has been temporarily locked."
+                )
+            );
         }
+    }
+
+    throw ValidationException::withMessages([
+        'email' => trans('auth.failed'),
+    ]);
+}
 
         RateLimiter::clear($this->throttleKey());
     }

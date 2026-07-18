@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use App\Notifications\SecurityEventNotification;
 
 class NewPasswordController extends Controller
 {
@@ -49,6 +50,8 @@ class NewPasswordController extends Controller
                 ])->save();
 
                 event(new PasswordReset($user));
+                $user->notify(new SecurityEventNotification("Security Alert: Your password has been reset successfully." ));
+
             }
         );
 

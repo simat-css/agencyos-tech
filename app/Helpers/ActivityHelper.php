@@ -4,7 +4,6 @@ namespace App\Helpers;
 
 class ActivityHelper
 {
-
     public static function log(
         $causer,
         $subject,
@@ -12,35 +11,30 @@ class ActivityHelper
         string $action,
         array $old = [],
         array $new = []
-    )
-    {
-
+    ) {
         activity()
-
             ->causedBy($causer)
 
             ->performedOn($subject)
 
             ->withProperties([
+                "module" => $module,
 
-                'module' => $module,
+                "action" => $action,
 
-                'action' => $action,
+                "subject_id" => $subject?->id,
 
-                'old' => $old,
+                "subject_type" => class_basename($subject),
 
-                'new' => $new,
+                "old" => $old,
 
-                'ip' => request()->ip(),
+                "new" => $new,
 
-                'browser' => request()->userAgent(),
+                "ip" => request()->ip(),
 
+                "browser" => request()->userAgent(),
             ])
 
-            ->log(
-                ucfirst($module).' '.$action
-            );
-
+            ->log(ucfirst($module) . " " . $action);
     }
-
 }

@@ -142,10 +142,10 @@ class DepartmentController extends Controller
     {
         $department = $this->departmentService->create($request->validated());
 
-        activity()
-            ->causedBy(Auth::user())
-            ->performedOn($department)
-            ->log("Department created successfully.");
+        // activity()
+        //     ->causedBy(Auth::user())
+        //     ->performedOn($department)
+        //     ->log("Department created successfully.");
 
         return redirect()
             ->route("departments.index")
@@ -193,10 +193,10 @@ class DepartmentController extends Controller
     ) {
         $this->departmentService->update($department, $request->validated());
 
-        activity()
-            ->causedBy(Auth::user())
-            ->performedOn($department)
-            ->log("Department updated successfully.");
+        // activity()
+        //     ->causedBy(Auth::user())
+        //     ->performedOn($department)
+        //     ->log("Department updated successfully.");
 
         return redirect()
             ->route("departments.index")
@@ -228,10 +228,10 @@ class DepartmentController extends Controller
 
         $this->departmentService->delete($department);
 
-        activity()
-            ->causedBy(Auth::user())
-            ->performedOn($department)
-            ->log("Department deleted successfully.");
+        // activity()
+        //     ->causedBy(Auth::user())
+        //     ->performedOn($department)
+        //     ->log("Department deleted successfully.");
 
         $message = "Department deleted successfully.";
 
@@ -272,14 +272,14 @@ class DepartmentController extends Controller
         // ]);
         $department = $this->departmentService->toggleStatus($department);
 
-        activity()
-            ->causedBy(Auth::user())
-            ->performedOn($department)
-            ->log(
-                $department->status
-                    ? "Department activated successfully."
-                    : "Department deactivated successfully."
-            );
+        // activity()
+        //     ->causedBy(Auth::user())
+        //     ->performedOn($department)
+        //     ->log(
+        //         $department->status
+        //             ? "Department activated successfully."
+        //             : "Department deactivated successfully."
+        //     );
 
         return response()->json([
             "message" => "Department status updated successfully",
@@ -317,10 +317,10 @@ class DepartmentController extends Controller
                     continue;
                 }
 
-                activity()
-                    ->causedBy(Auth::user())
-                    ->performedOn($department)
-                    ->log("Department deleted successfully.");
+                // activity()
+                //     ->causedBy(Auth::user())
+                //     ->performedOn($department)
+                //     ->log("Department deleted successfully.");
 
                 $department->delete();
 
@@ -401,10 +401,10 @@ class DepartmentController extends Controller
                     "updated_by" => Auth::id(),
                 ]);
 
-                activity()
-                    ->causedBy(Auth::user())
-                    ->performedOn($department)
-                    ->log("Department activated successfully.");
+                // activity()
+                //     ->causedBy(Auth::user())
+                //     ->performedOn($department)
+                //     ->log("Department activated successfully.");
 
                 $activatedCount++;
             }
@@ -477,10 +477,10 @@ class DepartmentController extends Controller
                     "updated_by" => Auth::id(),
                 ]);
 
-                activity()
-                    ->causedBy(Auth::user())
-                    ->performedOn($department)
-                    ->log("Department deactivated successfully.");
+                // activity()
+                //     ->causedBy(Auth::user())
+                //     ->performedOn($department)
+                //     ->log("Department deactivated successfully.");
 
                 $deactivatedCount++;
             }

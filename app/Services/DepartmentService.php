@@ -62,14 +62,20 @@ class DepartmentService
         | Activity Log
         |--------------------------------------------------------------------------
         */
+            $department->load("company");
 
             ActivityHelper::log(
                 $authUser,
                 $department,
-                "Department",
+                "department",
                 "created",
                 [],
-                $department->load("company")->toArray()
+                [
+                    "name" => $department->name,
+                    "code" => $department->code,
+                    "company" => $department->company?->name,
+                    "status" => $department->status ? "Active" : "Inactive",
+                ]
             );
 
             /*
@@ -91,18 +97,9 @@ class DepartmentService
     /**
      * Update Department
      */
-    /**
-     * Update Department
-     */
     public function update(Department $department, array $data): Department
     {
         $authUser = auth()->user();
-
-        /*
-    |--------------------------------------------------------------------------
-    | Permission Check
-    |--------------------------------------------------------------------------
-    */
 
         if (!$authUser->can("departments.edit")) {
             throw new \Exception(
@@ -117,7 +114,14 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $oldData = $department->load("company")->toArray();
+            $department->load("company");
+
+            $oldData = [
+                "name" => $department->name,
+                "code" => $department->code,
+                "company" => $department->company?->name,
+                "status" => $department->status ? "Active" : "Inactive",
+            ];
 
             /*
         |--------------------------------------------------------------------------
@@ -131,14 +135,35 @@ class DepartmentService
 
             /*
         |--------------------------------------------------------------------------
+        | Refresh Department Once
+        |--------------------------------------------------------------------------
+        */
+
+            $department->refresh()->load("company");
+
+            /*
+        |--------------------------------------------------------------------------
         | New Data For Activity Log
         |--------------------------------------------------------------------------
         */
 
-            $newData = $department
-                ->fresh()
-                ->load("company")
-                ->toArray();
+            $newData = [
+                "name" => $department->name,
+                "code" => $department->code,
+                "company" => $department->company?->name,
+                "status" => $department->status ? "Active" : "Inactive",
+            ];
+
+            $oldValues = [];
+            $newValues = [];
+
+            foreach ($newData as $field => $value) {
+                if (($oldData[$field] ?? null) != $value) {
+                    $oldValues[$field] = $oldData[$field];
+
+                    $newValues[$field] = $value;
+                }
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -146,14 +171,16 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            ActivityHelper::log(
-                $authUser,
-                $department,
-                "Department",
-                "updated",
-                $oldData,
-                $newData
-            );
+            if (!empty($oldValues)) {
+                ActivityHelper::log(
+                    $authUser,
+                    $department,
+                    "department",
+                    "updated",
+                    $oldValues,
+                    $newValues
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -167,7 +194,7 @@ class DepartmentService
                 )
             );
 
-            return $department->fresh();
+            return $department;
         });
     }
 
@@ -197,7 +224,12 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $oldData = $department->load("company")->toArray();
+            $oldData = [
+                "name" => $department->name,
+                "code" => $department->code,
+                "company" => $department->company?->name,
+                "status" => $department->status ? "Active" : "Inactive",
+            ];
 
             $departmentName = $department->name;
 
@@ -210,7 +242,7 @@ class DepartmentService
             ActivityHelper::log(
                 $authUser,
                 $department,
-                "Department",
+                "department",
                 "deleted",
                 $oldData,
                 []
@@ -269,7 +301,9 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $oldData = $department->load("company")->toArray();
+            $oldData = [
+                "status" => $department->status ? "Active" : "Inactive",
+            ];
 
             /*
         |--------------------------------------------------------------------------
@@ -304,7 +338,9 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $newData = $department->load("company")->toArray();
+            $newData = [
+                "status" => $department->status ? "Active" : "Inactive",
+            ];
 
             /*
         |--------------------------------------------------------------------------
@@ -315,7 +351,7 @@ class DepartmentService
             ActivityHelper::log(
                 $authUser,
                 $department,
-                "Department",
+                "department",
                 "status_updated",
                 $oldData,
                 $newData
@@ -382,7 +418,9 @@ class DepartmentService
             |--------------------------------------------------------------------------
             */
 
-                $oldData = $department->load("company")->toArray();
+                $oldData = [
+                    "status" => "Active",
+                ];
 
                 /*
             |--------------------------------------------------------------------------
@@ -415,22 +453,15 @@ class DepartmentService
             |--------------------------------------------------------------------------
             */
 
-                $newData = $department
-                    ->fresh()
-                    ->load("company")
-                    ->toArray();
-
+                $newData = [
+                    "status" => "Inactive",
+                ];
                 ActivityHelper::log(
                     $authUser,
-
                     $department,
-
-                    "Department",
-
+                    "department",
                     "bulk_deactivated",
-
                     $oldData,
-
                     $newData
                 );
 
@@ -586,7 +617,9 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $oldData = $department->load("company")->toArray();
+            $oldData = [
+                "status" => "Inactive",
+            ];
 
             /*
         |--------------------------------------------------------------------------
@@ -606,10 +639,9 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $newData = $department
-                ->fresh()
-                ->load("company")
-                ->toArray();
+            $newData = [
+                "status" => "Active",
+            ];
 
             /*
         |--------------------------------------------------------------------------
@@ -620,7 +652,7 @@ class DepartmentService
             ActivityHelper::log(
                 $authUser,
                 $department,
-                "Department",
+                "department",
                 "activated",
                 $oldData,
                 $newData
@@ -666,8 +698,9 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $oldData = $department->load("company")->toArray();
-
+            $oldData = [
+                "status" => "Active",
+            ];
             /*
         |--------------------------------------------------------------------------
         | Deactivate Department
@@ -686,10 +719,9 @@ class DepartmentService
         |--------------------------------------------------------------------------
         */
 
-            $newData = $department
-                ->fresh()
-                ->load("company")
-                ->toArray();
+            $newData = [
+                "status" => "Inactive",
+            ];
 
             /*
         |--------------------------------------------------------------------------
@@ -700,7 +732,7 @@ class DepartmentService
             ActivityHelper::log(
                 $authUser,
                 $department,
-                "Department",
+                "department",
                 "deactivated",
                 $oldData,
                 $newData

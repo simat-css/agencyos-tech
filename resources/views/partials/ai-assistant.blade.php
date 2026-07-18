@@ -63,7 +63,7 @@
         <!-- Input -->
         <div class="border-top p-3 bg-white">
 
-            <form id="aiCommandForm">
+            <form id="aiCommandForm" data-route="{{ route('ai.execute') }}">
 
                 @csrf
 
@@ -93,74 +93,5 @@
 
 </div>
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    const form = document.getElementById('aiCommandForm');
-
-    if (!form) return;
-
-    form.addEventListener('submit', async function(e) {
-
-        e.preventDefault();
-
-        const command =
-            document.getElementById('aiCommand').value;
-
-        if (!command.trim()) return;
-
-        try {
-
-            const response = await fetch(
-                "{{ route('ai.execute') }}",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN":
-                        document.querySelector(
-                            'meta[name="csrf-token"]'
-                        ).content
-                    },
-                    body: JSON.stringify({
-                        command: command
-                    })
-                }
-            );
-
-            const data = await response.json();
-
-            const chatMessages =
-                document.getElementById('chatMessages');
-
-            chatMessages.innerHTML += `
-                <div class="text-end mb-3">
-                    <div class="d-inline-block bg-primary text-white p-2 rounded">
-                        ${command}
-                    </div>
-                </div>
-
-                <div class="text-start mb-3">
-                    <div class="d-inline-block bg-light border p-2 rounded">
-                        ${data.message.replace(/\n/g, '<br>')}
-                    </div>
-                </div>
-            `;
-
-            chatMessages.scrollTop =
-                chatMessages.scrollHeight;
-
-            document.getElementById('aiCommand').value = '';
-
-        } catch (error) {
-
-            console.error(error);
-
-            alert('Something went wrong.');
-        }
-
-    });
-
-});
-</script>
+<script src="{{ asset('assets/js/pages/ai-assistant.js') }}"></script>
 @endpush

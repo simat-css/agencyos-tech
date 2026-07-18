@@ -10,6 +10,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ActivityLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -313,6 +314,23 @@ Route::middleware("auth")
         ])
             ->middleware("permission:notifications.delete")
             ->name("bulk-delete");
+    });
+
+
+    // Activity Logs
+Route::middleware('auth')
+    ->prefix('activity-logs')
+    ->name('activity-logs.')
+    ->group(function () {
+
+        Route::get('/', [ActivityLogController::class, 'index'])
+            ->middleware('permission:activity_logs.view')
+            ->name('index');
+
+        Route::delete('/{activity}', [ActivityLogController::class, 'destroy'])
+            ->middleware('role:Super Admin')
+            ->name('destroy');
+
     });
 
 //Profile

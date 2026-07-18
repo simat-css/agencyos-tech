@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Company;
 use App\Models\Department;
 use Spatie\Permission\Models\Role;
+use App\Notifications\SecurityEventNotification;
 
 class UserService
 {
@@ -141,9 +142,16 @@ class UserService
                 $user->assignRole($role);
             }
 
-            $newData = $user->toArray();
+            $user->load(["company", "department", "roles"]);
 
-            $newData["roles"] = $user->roles->pluck("name")->toArray();
+            $newData = [
+                "name" => $user->name,
+                "email" => $user->email,
+                "company" => $user->company?->name,
+                "department" => $user->department?->name,
+                "role" => $user->roles->pluck("name")->implode(", "),
+                "status" => $user->status ? "Active" : "Inactive",
+            ];
 
             ActivityHelper::log(
                 $authUser,
@@ -204,11 +212,29 @@ class UserService
             throw new \Exception("You cannot edit another company user.");
         }
 
+        $companyId = $data["company_id"] ?? $user->company_id;
+
         if (
             $authUser->hasRole("Company Admin") &&
-            $data["company_id"] != $authUser->company_id
+            $companyId != $authUser->company_id
         ) {
             throw new \Exception("You cannot assign users to another company.");
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Company Validation
+    |--------------------------------------------------------------------------
+    */
+
+        $company = Company::find($companyId);
+
+        if (!$company) {
+            throw new \Exception("Company not found.");
+        }
+
+        if (!$company->status) {
+            throw new \Exception("Selected company is inactive.");
         }
 
         /*
@@ -241,6 +267,17 @@ class UserService
                 "Only Super Admin can assign Super Admin role."
             );
         }
+
+        if ($role && !Role::where("name", $role)->exists()) {
+            throw new \Exception("Selected role not found.");
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Profile Photo Upload
+    |--------------------------------------------------------------------------
+    */
+
         if (isset($data["profile_photo"])) {
             if ($user->profile_photo) {
                 Storage::disk("public")->delete($user->profile_photo);
@@ -251,15 +288,36 @@ class UserService
                 "public"
             );
         }
-        if (!empty($data["department_id"])) {
-            $department = \App\Models\Department::find($data["department_id"]);
 
-            if ($department && $department->company_id != $data["company_id"]) {
+        /*
+    |--------------------------------------------------------------------------
+    | Department Validation
+    |--------------------------------------------------------------------------
+    */
+
+        if (!empty($data["department_id"])) {
+            $department = Department::find($data["department_id"]);
+
+            if (!$department) {
+                throw new \Exception("Department not found.");
+            }
+
+            if ($department->company_id != $companyId) {
                 throw new \Exception(
                     "Selected department does not belong to selected company."
                 );
             }
+
+            if (!$department->status) {
+                throw new \Exception("Selected department is inactive.");
+            }
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Password
+    |--------------------------------------------------------------------------
+    */
 
         if (empty($data["password"])) {
             unset($data["password"]);
@@ -267,46 +325,107 @@ class UserService
             $data["password"] = Hash::make($data["password"]);
         }
 
-        DB::transaction(function () use ($user, $data, $role, $authUser) {
-            $oldData = $user->toArray();
+        $roleChanged = false;
+        $oldRole = null;
+        $newRole = null;
+        $changes = [];
 
-            $oldData["roles"] = $user->roles->pluck("name")->toArray();
+        DB::transaction(function () use (
+            $user,
+            $data,
+            $role,
+            $authUser,
+            &$roleChanged,
+            &$oldRole,
+            &$newRole,
+            &$changes
+        ) {
+            $user->load(["company", "department", "roles"]);
+
+            $oldData = [
+                "name" => $user->name,
+                "email" => $user->email,
+                "company" => $user->company?->name,
+                "department" => $user->department?->name,
+                "role" => $user->roles->pluck("name")->implode(", "),
+                "status" => $user->status ? "Active" : "Inactive",
+            ];
 
             $currentRole = $user->roles->pluck("name")->first();
 
             $user->update($data);
 
             if ($role && $currentRole !== $role) {
-                $user->syncRoles([$role]);
+                $roleChanged = true;
+                $oldRole = $currentRole;
+                $newRole = $role;
 
-                $user->notify(
-                    new UserActionNotification(
-                        "Your role has been changed to {$role}."
-                    )
-                );
+                $user->syncRoles([$role]);
             }
 
-            $freshUser = $user->fresh();
+            $freshUser = $user
+                ->fresh()
+                ->load(["company", "department", "roles"]);
 
-            $newData = $freshUser->toArray();
+            $newData = [
+                "name" => $freshUser->name,
+                "email" => $freshUser->email,
+                "company" => $freshUser->company?->name,
+                "department" => $freshUser->department?->name,
+                "role" => $freshUser->roles->pluck("name")->implode(", "),
+                "status" => $freshUser->status ? "Active" : "Inactive",
+            ];
 
-            $newData["roles"] = $freshUser->roles->pluck("name")->toArray();
+            $oldValues = [];
+            $newValues = [];
 
-            ActivityHelper::log(
-                $authUser,
-                $user,
-                "User",
-                "updated",
-                $oldData,
-                $newData
-            );
+            foreach ($newData as $field => $value) {
+                if (($oldData[$field] ?? null) != $value) {
+                    $oldValues[$field] = $oldData[$field] ?? null;
+                    $newValues[$field] = $value;
+
+                    $changes[] =
+                        ucfirst($field) .
+                        " changed from '" .
+                        ($oldData[$field] ?? "N/A") .
+                        "' to '" .
+                        ($value ?? "N/A") .
+                        "'";
+                }
+            }
+
+            if (!empty($oldValues)) {
+                ActivityHelper::log(
+                    $authUser,
+                    $user,
+                    "User",
+                    "updated",
+                    $oldValues,
+                    $newValues
+                );
+            }
         });
 
-        $user->notify(
-            new UserActionNotification(
-                "Your account details have been updated."
-            )
-        );
+        /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    */
+
+        if ($roleChanged) {
+            $user->notify(
+                new SecurityEventNotification(
+                    "Security Alert: Your role has been changed from {$oldRole} to {$newRole} by an administrator."
+                )
+            );
+        }
+
+        if (!empty($changes)) {
+            $message = "Your account details have been updated.\n\n";
+            $message .= implode("\n", $changes);
+
+            $user->notify(new UserActionNotification($message));
+        }
 
         return $user->fresh();
     }
@@ -367,9 +486,16 @@ class UserService
                 Storage::disk("public")->delete($user->profile_photo);
             }
 
-            $oldData = $user->toArray();
+            $user->load(["company", "department", "roles"]);
 
-            $oldData["roles"] = $user->roles->pluck("name")->toArray();
+            $oldData = [
+                "name" => $user->name,
+                "email" => $user->email,
+                "company" => $user->company?->name,
+                "department" => $user->department?->name,
+                "role" => $user->roles->pluck("name")->implode(", "),
+                "status" => $user->status ? "Active" : "Inactive",
+            ];
 
             ActivityHelper::log(
                 $authUser,
@@ -461,11 +587,9 @@ class UserService
         }
 
         DB::transaction(function () use ($user, $authUser, $newStatus) {
-            $oldData = $user
-                ->load(["company", "department", "roles"])
-                ->toArray();
-
-            $oldData["roles"] = $user->roles->pluck("name")->toArray();
+            $oldData = [
+                "status" => $user->status ? "Active" : "Inactive",
+            ];
 
             $user->status = $newStatus;
 
@@ -475,9 +599,9 @@ class UserService
                 ->fresh()
                 ->load(["company", "department", "roles"]);
 
-            $newData = $freshUser->toArray();
-
-            $newData["roles"] = $freshUser->roles->pluck("name")->toArray();
+            $newData = [
+                "status" => $freshUser->status ? "Active" : "Inactive",
+            ];
 
             ActivityHelper::log(
                 $authUser,
@@ -542,27 +666,16 @@ class UserService
             &$skippedUsers
         ) {
             foreach ($users as $user) {
-                /*
-            |--------------------------------------------------------------------------
-            | Self Protection
-            |--------------------------------------------------------------------------
-            */
-
+                // Self Protection
                 if ($user->id == $authUser->id) {
                     $skippedUsers[] = [
                         "name" => $user->name,
                         "reason" => "You cannot modify your own account.",
                     ];
-
                     continue;
                 }
 
-                /*
-            |--------------------------------------------------------------------------
-            | Company Restriction
-            |--------------------------------------------------------------------------
-            */
-
+                // Company Restriction
                 if (
                     $authUser->hasRole("Company Admin") &&
                     $user->company_id != $authUser->company_id
@@ -571,16 +684,10 @@ class UserService
                         "name" => $user->name,
                         "reason" => "User belongs to another company.",
                     ];
-
                     continue;
                 }
 
-                /*
-            |--------------------------------------------------------------------------
-            | Super Admin Protection
-            |--------------------------------------------------------------------------
-            */
-
+                // Super Admin Protection
                 if (
                     $user->hasRole("Super Admin") &&
                     !$authUser->hasRole("Super Admin")
@@ -589,7 +696,6 @@ class UserService
                         "name" => $user->name,
                         "reason" => "Super Admin accounts cannot be modified.",
                     ];
-
                     continue;
                 }
 
@@ -600,7 +706,6 @@ class UserService
                                 "name" => $user->name,
                                 "reason" => "User is already active.",
                             ];
-
                             continue 2;
                         }
 
@@ -611,15 +716,12 @@ class UserService
                                 "name" => $user->name,
                                 "reason" => $check["message"],
                             ];
-
                             continue 2;
                         }
 
-                        $oldData = $user->toArray();
-
-                        $oldData["roles"] = $user->roles
-                            ->pluck("name")
-                            ->toArray();
+                        $oldData = [
+                            "status" => "Inactive",
+                        ];
 
                         $user->status = 1;
 
@@ -633,21 +735,19 @@ class UserService
                                 "name" => $user->name,
                                 "reason" => "User is already inactive.",
                             ];
-
                             continue 2;
                         }
 
-                        $oldData = $user->toArray();
-
-                        $oldData["roles"] = $user->roles
-                            ->pluck("name")
-                            ->toArray();
+                        $oldData = [
+                            "status" => "Active",
+                        ];
 
                         $user->status = 0;
 
                         $message = "Your account has been deactivated.";
 
                         break;
+
                     case "delete":
                         if (!$authUser->can("users.delete")) {
                             throw new \Exception(
@@ -655,10 +755,18 @@ class UserService
                             );
                         }
 
-                        $oldData = $user->toArray();
-                        $oldData["roles"] = $user->roles
-                            ->pluck("name")
-                            ->toArray();
+                        $user->load(["company", "department", "roles"]);
+
+                        $oldData = [
+                            "name" => $user->name,
+                            "email" => $user->email,
+                            "company" => $user->company?->name,
+                            "department" => $user->department?->name,
+                            "role" => $user->roles
+                                ->pluck("name")
+                                ->implode(", "),
+                            "status" => $user->status ? "Active" : "Inactive",
+                        ];
 
                         if ($user->profile_photo) {
                             Storage::disk("public")->delete(
@@ -684,13 +792,11 @@ class UserService
 
                 $user->save();
 
-                $freshUser = $user
-                    ->fresh()
-                    ->load(["company", "department", "roles"]);
+                $freshUser = $user->fresh();
 
-                $newData = $freshUser->toArray();
-
-                $newData["roles"] = $freshUser->roles->pluck("name")->toArray();
+                $newData = [
+                    "status" => $freshUser->status ? "Active" : "Inactive",
+                ];
 
                 ActivityHelper::log(
                     $authUser,
@@ -821,7 +927,25 @@ class UserService
     }
     public function restoreUser(User $user): bool
     {
-        return $user->restore();
+        $restored = $user->restore();
+
+        if ($restored) {
+            ActivityHelper::log(
+                auth()->user(),
+                $user,
+                "User",
+                "restored",
+                [],
+                [
+                    "name" => $user->name,
+                    "email" => $user->email,
+                    "company_id" => $user->company_id,
+                    "status" => $user->status ? "Active" : "Inactive",
+                ]
+            );
+        }
+
+        return $restored;
     }
 
     public function findDeletedUsers(?int $companyId = null)

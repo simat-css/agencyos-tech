@@ -43,7 +43,11 @@ class CompanyController extends Controller
     public function index()
     {
         $query = Company::query();
-        if (!auth()->user()->hasRole("Super Admin")) {
+        if (
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
             $query->where("id", auth()->user()->company_id);
         }
         if (request("search")) {
@@ -63,7 +67,11 @@ class CompanyController extends Controller
         // $totalCompanies = Company::count();
         // $activeCompanies = Company::where('status', 1)->count();
         // $inactiveCompanies = Company::where('status', 0)->count();
-        if (!auth()->user()->hasRole("Super Admin")) {
+        if (
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
             $totalCompanies = Company::where(
                 "id",
                 auth()->user()->company_id
@@ -119,7 +127,13 @@ class CompanyController extends Controller
             "company",
             "created",
             [],
-            $company->toArray()
+            [
+                "name" => $company->name,
+                "email" => $company->email,
+                "phone" => $company->phone,
+                "website" => $company->website,
+                "status" => $company->status ? "Active" : "Inactive",
+            ]
         );
 
         return redirect()
@@ -154,16 +168,38 @@ class CompanyController extends Controller
      */
     public function update(UpdateCompanyRequest $request, Company $company)
     {
-        $oldData = $company->toArray();
+        $oldData = $company->only([
+            "name",
+            "email",
+            "phone",
+            "website",
+            "status",
+        ]);
+
         $this->companyService->update($company, $request->validated());
+
+        $newData = $company
+            ->fresh()
+            ->only(["name", "email", "phone", "website", "status"]);
+
+        $oldValues = [];
+        $newValues = [];
+
+        foreach ($newData as $field => $value) {
+            if (($oldData[$field] ?? null) != $value) {
+                $oldValues[$field] = $oldData[$field];
+
+                $newValues[$field] = $value;
+            }
+        }
 
         ActivityHelper::log(
             Auth::user(),
-            $company,
+            $company->fresh(),
             "company",
             "updated",
-            $oldData,
-            $company->fresh()->toArray()
+            $oldValues,
+            $newValues
         );
 
         return redirect()
@@ -192,7 +228,13 @@ class CompanyController extends Controller
                 );
         }
 
-        $oldData = $company->toArray();
+        $oldData = [
+            "name" => $company->name,
+            "email" => $company->email,
+            "phone" => $company->phone,
+            "website" => $company->website,
+            "status" => $company->status ? "Active" : "Inactive",
+        ];
 
         $this->companyService->delete($company);
 
@@ -211,15 +253,23 @@ class CompanyController extends Controller
     }
     public function toggleStatus(Company $company)
     {
-        $oldData = $company->toArray();
+        $oldData = [
+            "status" => $company->status ? "Active" : "Inactive",
+        ];
+
         $this->companyService->toggleStatus($company);
+
+        $newData = [
+            "status" => $company->fresh()->status ? "Active" : "Inactive",
+        ];
+
         ActivityHelper::log(
             Auth::user(),
-            $company,
+            $company->fresh(),
             "company",
             "status_changed",
             $oldData,
-            $company->fresh()->toArray()
+            $newData
         );
 
         return redirect()

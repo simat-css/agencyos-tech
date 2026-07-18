@@ -154,6 +154,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
         });
+//Delete alert
+document.querySelectorAll('.delete-notification-form')
+    .forEach(form => {
 
+        form.addEventListener('submit', function (e) {
+
+            e.preventDefault();
+
+            Swal.fire({
+
+                icon: 'warning',
+
+                title: 'Delete Notification?',
+
+                text: 'This notification will be deleted.',
+
+                showCancelButton: true,
+
+                confirmButtonText: 'Yes, Delete',
+
+                cancelButtonText: 'Cancel',
+
+                confirmButtonColor: '#dc3545'
+
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+
+                    form.submit();
+
+                }
+
+            });
+
+        });
+
+    });
 
 });

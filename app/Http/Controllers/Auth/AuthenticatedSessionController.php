@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use App\Models\UserSession;
 use Jenssegers\Agent\Agent;
+use App\Notifications\LoginAlertNotification;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -42,6 +43,12 @@ class AuthenticatedSessionController extends Controller
         'login_at'   => now(),
         'is_active'  => true,
     ]);
+
+    auth()->user()->notify(
+    new LoginAlertNotification(
+        'You have successfully logged in to AgencyOS.'
+    )
+    );
 
     return redirect()->intended(route('dashboard', absolute: false));
 }
