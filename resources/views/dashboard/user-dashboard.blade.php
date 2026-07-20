@@ -19,6 +19,7 @@
 {{-- Statistics --}}
 <div class="row g-4">
 
+    {{-- Role --}}
     <div class="col-lg-3 col-md-6">
 
         <div class="card stat-card">
@@ -47,6 +48,36 @@
 
     </div>
 
+    {{-- Company --}}
+    <div class="col-lg-3 col-md-6">
+
+        <div class="card stat-card">
+
+            <div class="card-body d-flex justify-content-between">
+
+                <div>
+
+                    <small>Company</small>
+
+                    <h5 class="mb-0">
+                        {{ auth()->user()->company->name ?? 'N/A' }}
+                    </h5>
+
+                </div>
+
+                <div class="stat-icon icon-info">
+
+                    <i class="fas fa-building"></i>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {{-- Department --}}
     <div class="col-lg-3 col-md-6">
 
         <div class="card stat-card">
@@ -75,6 +106,7 @@
 
     </div>
 
+    {{-- Notifications --}}
     <div class="col-lg-3 col-md-6">
 
         <div class="card stat-card">
@@ -103,6 +135,7 @@
 
     </div>
 
+    {{-- Status --}}
     <div class="col-lg-3 col-md-6">
 
         <div class="card stat-card">
@@ -114,7 +147,9 @@
                     <small>Account Status</small>
 
                     <h5>
-                        {{ auth()->user()->status ? 'Active' : 'Inactive' }}
+                        {!! auth()->user()->status
+                            ? '<span class="badge bg-success">Active</span>'
+                            : '<span class="badge bg-danger">Inactive</span>' !!}
                     </h5>
 
                 </div>
@@ -124,6 +159,48 @@
                     <i class="fas fa-user-check"></i>
 
                 </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{{-- Quick Actions --}}
+<div class="row mt-4">
+
+    <div class="col-12">
+
+        <div class="card content-card">
+
+            <div class="card-header bg-white border-0">
+
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Quick Actions
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <a href="{{ route('profile.show') }}"
+                   class="btn btn-primary me-2 mb-2">
+
+                    <i class="fas fa-user me-1"></i>
+                    My Profile
+
+                </a>
+
+                <a href="{{ route('notifications.index') }}"
+                   class="btn btn-warning me-2 mb-2">
+
+                    <i class="fas fa-bell me-1"></i>
+                    Notifications
+
+                </a>
 
             </div>
 
@@ -188,19 +265,19 @@
 
 </div>
 
-{{-- Activity & Notifications --}}
+{{-- Activities & Notifications --}}
 <div class="row mt-4">
 
+    {{-- Activities --}}
     <div class="col-lg-6">
 
         <div class="card content-card">
 
             <div class="card-header bg-white border-0">
 
-                <h5>
-
+                <h5 class="mb-0">
+                     <i class="fas fa-timeline text-primary me-2"></i>
                     Recent Activities
-
                 </h5>
 
             </div>
@@ -209,11 +286,25 @@
 
                 @forelse($activities ?? [] as $activity)
 
-                    <div class="mb-3">
+                    <div class="border-bottom pb-2 mb-3">
 
                         <i class="fas fa-history text-primary me-2"></i>
 
-                        {{ $activity }}
+                        {{ is_object($activity) ? $activity->description : $activity }}
+
+                        @if(is_object($activity) && isset($activity->created_at))
+
+                            <div>
+
+                                <small class="text-muted">
+
+                                    {{ $activity->created_at->diffForHumans() }}
+
+                                </small>
+
+                            </div>
+
+                        @endif
 
                     </div>
 
@@ -231,16 +322,16 @@
 
     </div>
 
+    {{-- Notifications --}}
     <div class="col-lg-6">
 
         <div class="card content-card">
 
             <div class="card-header bg-white border-0">
 
-                <h5>
-
+                <h5 class="mb-0">
+                     <i class="fas fa-bell text-warning me-2"></i>
                     Recent Notifications
-
                 </h5>
 
             </div>
@@ -249,9 +340,29 @@
 
                 @forelse(auth()->user()->notifications->take(5) as $notification)
 
-                    <div class="mb-3">
+                    <div class="border-bottom pb-2 mb-3">
 
-                        {{ $notification->data['message'] ?? 'Notification' }}
+                        <div class="d-flex justify-content-between">
+
+                            <span>
+                                {{ $notification->data['message'] ?? 'Notification' }}
+                            </span>
+
+                            @if(is_null($notification->read_at))
+
+                                <span class="badge bg-danger">
+                                    New
+                                </span>
+
+                            @endif
+
+                        </div>
+
+                        <small class="text-muted">
+
+                            {{ $notification->created_at->diffForHumans() }}
+
+                        </small>
 
                     </div>
 
@@ -280,12 +391,6 @@
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Activity Chart
-    |--------------------------------------------------------------------------
-    */
 
     let activityChart = new ApexCharts(
         document.querySelector("#activityChart"),
@@ -321,13 +426,6 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     activityChart.render();
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Notification Donut Chart
-    |--------------------------------------------------------------------------
-    */
 
     let notificationChart = new ApexCharts(
         document.querySelector("#notificationChart"),

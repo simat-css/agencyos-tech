@@ -308,6 +308,30 @@
 
                         </div>
 
+                        <div class="col-md-6">
+
+    <label class="text-muted small">
+        Created By
+    </label>
+
+    <h6>
+        {{ $user->creator?->name ?? 'N/A' }}
+    </h6>
+
+</div>
+
+<div class="col-md-6">
+
+    <label class="text-muted small">
+        Last Updated By
+    </label>
+
+    <h6>
+        {{ $user->updater?->name ?? 'N/A' }}
+    </h6>
+
+</div>
+
 
 
 

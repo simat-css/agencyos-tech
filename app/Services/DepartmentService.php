@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\ActivityHelper;
 use App\Notifications\UserActionNotification;
+use App\Models\User;
 
 class DepartmentService
 {
@@ -89,6 +90,20 @@ class DepartmentService
                     "Department {$department->name} has been created."
                 )
             );
+
+            if (!$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been created by {$authUser->name}."
+            )
+        );
+    }
+}
 
             return $department;
         });
@@ -193,6 +208,19 @@ class DepartmentService
                     "Department {$department->name} has been updated."
                 )
             );
+            if (!$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been updated by {$authUser->name}."
+            )
+        );
+    }
+}
 
             return $department;
         });
@@ -267,6 +295,20 @@ class DepartmentService
                     "Department {$departmentName} has been deleted."
                 )
             );
+
+            if (!$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "Department {$departmentName} has been deleted by {$authUser->name}."
+            )
+        );
+    }
+}
 
             return true;
         });
@@ -369,6 +411,20 @@ class DepartmentService
 
             $authUser->notify(new UserActionNotification($message));
 
+            if (!$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "Department {$department->name} status was changed by {$authUser->name}."
+            )
+        );
+    }
+}
+
             return $department;
         });
     }
@@ -467,6 +523,29 @@ class DepartmentService
 
                 $deactivatedCount++;
             }
+
+           if ($deactivatedCount > 0) {
+
+    $authUser->notify(
+        new UserActionNotification(
+            "{$deactivatedCount} department(s) have been deactivated."
+        )
+    );
+}
+
+if ($deactivatedCount > 0 && !$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "{$deactivatedCount} department(s) were deactivated by {$authUser->name}."
+            )
+        );
+    }
+}
 
             return [
                 "deactivated" => $deactivatedCount,
@@ -669,6 +748,19 @@ class DepartmentService
                     "Department {$department->name} has been activated."
                 )
             );
+            if (!$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been activated by {$authUser->name}."
+            )
+        );
+    }
+}
 
             return $department->fresh();
         });
@@ -749,6 +841,20 @@ class DepartmentService
                     "Department {$department->name} has been deactivated."
                 )
             );
+
+            if (!$authUser->hasRole('Super Admin')) {
+
+    $superAdmins = User::role('Super Admin')->get();
+
+    foreach ($superAdmins as $admin) {
+
+        $admin->notify(
+            new UserActionNotification(
+                "Department {$department->name} has been deactivated by {$authUser->name}."
+            )
+        );
+    }
+}
 
             return $department->fresh();
         });

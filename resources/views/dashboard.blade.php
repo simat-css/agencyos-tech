@@ -159,8 +159,7 @@
 
                         <i class="fas fa-chart-line me-2"></i>
 
-                        Overview
-
+                        Company Growth
                     </h5>
 
                 </div>
@@ -182,7 +181,7 @@
                 <div class="card-header bg-white border-0">
 
                     <h5 class="mb-0">
-                        System Statistics
+                        Platform Summary
                     </h5>
 
                 </div>
@@ -209,6 +208,7 @@
                 <div class="card-header bg-white border-0">
 
                     <h5 class="mb-0">
+                               <i class="fas fa-timeline text-primary me-2"></i>
                         Recent Activities
                     </h5>
 
@@ -216,25 +216,27 @@
 
                 <div class="card-body">
 
-                    <div class="agency-activity-item mb-3">
-                        <i class="fas fa-user-plus text-success me-2"></i>
-                        New User Created
-                    </div>
+                    @forelse($recentActivities as $activity)
 
-                    <div class="agency-activity-item mb-3">
-                        <i class="fas fa-building text-primary me-2"></i>
-                        Company Added
-                    </div>
+<div class="agency-activity-item mb-3">
 
-                    <div class="agency-activity-item mb-3">
-                        <i class="fas fa-user-edit text-warning me-2"></i>
-                        User Updated
-                    </div>
+    <i class="fas fa-history text-primary me-2"></i>
 
-                    <div class="agency-activity-item">
-                        <i class="fas fa-trash text-danger me-2"></i>
-                        Company Deleted
-                    </div>
+    {{ $activity->description }}
+
+    <small class="text-muted d-block">
+        {{ $activity->created_at->diffForHumans() }}
+    </small>
+
+</div>
+
+@empty
+
+<p class="text-muted">
+    No recent activities found.
+</p>
+
+@endforelse
 
                 </div>
 
@@ -249,6 +251,7 @@
                 <div class="card-header bg-white border-0">
 
                     <h5 class="mb-0">
+                         <i class="fas fa-bell text-warning me-2"></i>
                         Notifications
                     </h5>
 
@@ -256,21 +259,25 @@
 
                 <div class="card-body">
 
-                    <div class="agency-activity-item mb-3">
-                        New company registered
-                    </div>
+                    @forelse($recentNotifications as $notification)
 
-                    <div class="agency-activity-item mb-3">
-                        New user created
-                    </div>
+<div class="agency-activity-item mb-3">
 
-                    <div class="agency-activity-item mb-3">
-                        Project deadline approaching
-                    </div>
+    {{ $notification->data['message'] ?? 'Notification' }}
 
-                    <div class="agency-activity-item">
-                        Invoice payment received
-                    </div>
+    <small class="text-muted d-block">
+        {{ $notification->created_at->diffForHumans() }}
+    </small>
+
+</div>
+
+@empty
+
+<p class="text-muted">
+    No notifications found.
+</p>
+
+@endforelse
 
                 </div>
 

@@ -29,9 +29,19 @@ class UserController extends Controller
 
     public function index()
     {
-        $query = User::with(["company", "department", "roles"]);
+        $query = User::with([
+            "company",
+            "department",
+            "roles",
+            "creator",
+            "updater",
+        ]);
 
-        if (!auth()->user()->hasRole("Super Admin")) {
+        if (
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
             $query->where("company_id", auth()->user()->company_id);
         }
 
@@ -87,7 +97,11 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
- if (!auth()->user()->hasRole("Super Admin")) {
+        if (
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
             $companies = Company::where(
                 "id",
                 auth()->user()->company_id
@@ -104,7 +118,11 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
-   if (!auth()->user()->hasRole("Super Admin")) {
+        if (
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
             $departments = Department::active()
                 ->where("company_id", auth()->user()->company_id)
                 ->orderBy("name")
@@ -123,7 +141,11 @@ class UserController extends Controller
 
         $statsQuery = User::query();
 
-    if (!auth()->user()->hasRole("Super Admin")) {
+        if (
+            !auth()
+                ->user()
+                ->hasRole("Super Admin")
+        ) {
             $statsQuery->where("company_id", auth()->user()->company_id);
         }
 
@@ -225,6 +247,8 @@ class UserController extends Controller
             "status" => "required|boolean",
             "profile_photo" => "nullable|image|max:2048",
         ]);
+
+        $validated["created_by"] = auth()->id();
 
         try {
             $this->userService->createUser($validated);
@@ -355,6 +379,7 @@ class UserController extends Controller
             "profile_photo" => "nullable|image|max:2048",
             "password" => "nullable|min:8",
         ]);
+        $validated["updated_by"] = auth()->id();
 
         try {
             $this->userService->updateUser($user, $validated);
@@ -428,7 +453,7 @@ class UserController extends Controller
             abort(403);
         }
 
-        $user->load(["company", "department", "roles"]);
+        $user->load(["company", "department", "roles", "creator", "updater"]);
 
         return view("users.show", compact("user"));
     }

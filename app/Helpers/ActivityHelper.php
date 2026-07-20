@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use App\Models\Company;
+
 class ActivityHelper
 {
     public static function log(
@@ -12,6 +14,23 @@ class ActivityHelper
         array $old = [],
         array $new = []
     ) {
+
+        $companyId = null;
+
+        // Company Module
+        if ($subject instanceof Company) {
+
+            $companyId = $subject->id;
+
+        }
+
+        // Department, User etc.
+        elseif (isset($subject->company_id)) {
+
+            $companyId = $subject->company_id;
+
+        }
+
         activity()
             ->causedBy($causer)
 
@@ -21,6 +40,8 @@ class ActivityHelper
                 "module" => $module,
 
                 "action" => $action,
+
+                "company_id" => $companyId,
 
                 "subject_id" => $subject?->id,
 

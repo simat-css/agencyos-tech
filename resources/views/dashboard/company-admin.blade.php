@@ -79,7 +79,7 @@
                 </div>
 
                 <div class="stat-icon icon-danger">
-                    <i class="fas fa-user-tie"></i>
+                    <i class="fas fa-user-slash"></i>
                 </div>
 
             </div>
@@ -138,30 +138,39 @@
         <div class="card content-card">
 
             <div class="card-header bg-white border-0">
-                <h5>Recent Activities</h5>
-            </div>
+
+    <h5 class="mb-0">
+
+       <i class="fas fa-timeline text-primary me-2"></i>
+Recent Activities
+
+    </h5>
+
+</div>
 
             <div class="card-body">
 
-                <div class="activity-item mb-3">
-                    <i class="fas fa-user-plus text-success me-2"></i>
-                    New employee added
-                </div>
+                @forelse($recentActivities as $activity)
 
-                <div class="activity-item mb-3">
-                    <i class="fas fa-sitemap text-primary me-2"></i>
-                    Department updated
-                </div>
+<div class="activity-item mb-3">
 
-                <div class="activity-item mb-3">
-                    <i class="fas fa-briefcase text-warning me-2"></i>
-                    New project assigned
-                </div>
+    <i class="fas fa-history text-primary me-2"></i>
 
-                <div class="activity-item">
-                    <i class="fas fa-user-edit text-info me-2"></i>
-                    Employee profile updated
-                </div>
+    {{ $activity->description }}
+
+    <small class="text-muted d-block">
+        {{ $activity->created_at->diffForHumans() }}
+    </small>
+
+</div>
+
+@empty
+
+<p class="text-muted mb-0">
+    No recent activities found.
+</p>
+
+@endforelse
 
             </div>
 
@@ -174,26 +183,34 @@
         <div class="card content-card">
 
             <div class="card-header bg-white border-0">
-                <h5>Notifications</h5>
-            </div>
+    <h5 class="mb-0">
+        <i class="fas fa-bell text-warning me-2"></i>
+        Notifications
+    </h5>
+</div>
 
             <div class="card-body">
 
-                <div class="mb-3">
-                    New employee joined today
-                </div>
+                @forelse($recentNotifications as $notification)
 
-                <div class="mb-3">
-                    Project deadline approaching
-                </div>
+<div class="mb-3">
 
-                <div class="mb-3">
-                    Department meeting scheduled
-                </div>
+    {{ $notification->data['message'] ?? 'Notification' }}
 
-                <div>
-                    Monthly report ready
-                </div>
+    <small class="text-muted d-block">
+        {{ $notification->created_at->diffForHumans() }}
+    </small>
+
+</div>
+
+@empty
+
+<p class="text-muted mb-0">
+    No notifications found.
+</p>
+
+@endforelse
+
 
             </div>
 

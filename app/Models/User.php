@@ -15,14 +15,16 @@ class User extends Authenticatable implements MustVerifyEmail
 
 
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'company_id',
-        'department_id',
-        'profile_photo',
-        'status',
-    ];
+    'name',
+    'email',
+    'password',
+    'company_id',
+    'department_id',
+    'profile_photo',
+    'status',
+    'created_by',
+    'updated_by',
+];
 
 
 
@@ -43,6 +45,27 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
 
+/*
+|--------------------------------------------------------------------------
+| Created By
+|--------------------------------------------------------------------------
+*/
+
+public function creator()
+{
+    return $this->belongsTo(User::class, 'created_by');
+}
+
+/*
+|--------------------------------------------------------------------------
+| Updated By
+|--------------------------------------------------------------------------
+*/
+
+public function updater()
+{
+    return $this->belongsTo(User::class, 'updated_by');
+}
 
     /*
     |--------------------------------------------------------------------------

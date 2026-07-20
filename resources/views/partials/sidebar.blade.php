@@ -35,13 +35,31 @@
                 </a>
 
             </li>
-
+            {{-- My Profile --}}
+            <li class="mt-4 mb-2 text-uppercase small text-secondary">
+              Account
+            </li>
+            <li class="nav-item mb-2">
+            <a href="{{ route('profile.show') }}"
+       class="nav-link text-white {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+        <i class="fas fa-user-circle me-2"></i>
+        My Profile
+         </a>
+          </li>
+             @canany([
+    'companies.view','companies.create',
+    'departments.view','departments.create',
+    'roles.view','roles.create',
+    'users.view','users.create'
+])
             {{-- User Management --}}
             <li class="mt-4 mb-2 text-uppercase small text-secondary">
                 User Management
             </li>
+            @endcanany
 
             {{-- Companies --}}
+            @canany(['companies.view','companies.create'])
             <li class="nav-item">
 
                 <a class="nav-link text-white d-flex justify-content-between align-items-center"
@@ -62,7 +80,7 @@
                      id="companyMenu">
 
                     <ul class="nav flex-column ms-3">
-
+                        @can('companies.view')
                         <li class="nav-item">
 
                             <a href="{{ route('companies.index') }}"
@@ -74,7 +92,9 @@
                             </a>
 
                         </li>
+                        @endcan
                         {{-- @role('Super Admin') --}}
+                        @can('companies.create')
                         <li class="nav-item">
 
                             <a href="{{ route('companies.create') }}"
@@ -86,6 +106,7 @@
                             </a>
 
                         </li>
+                        @endcan
                         {{-- @endrole --}}
 
                     </ul>
@@ -93,7 +114,10 @@
                 </div>
 
             </li>
+           @endcanany
 
+
+            @canany(['departments.view','departments.create'])
             {{-- Departments --}}
             <li class="nav-item">
 
@@ -115,7 +139,7 @@
                      id="departmentMenu">
 
                     <ul class="nav flex-column ms-3">
-
+                       @can('departments.view')
                         <li class="nav-item">
 
                             <a href="{{ route('departments.index') }}"
@@ -127,7 +151,9 @@
                             </a>
 
                         </li>
-
+                        @endcan
+                         
+                        @can('departments.create')
                         @if($hasCompany)
 
                             <li class="nav-item">
@@ -157,12 +183,16 @@
                             </li>
 
                         @endif
+                        @endcan
 
                     </ul>
 
                 </div>
 
             </li>
+            @endcanany
+
+            @canany(['roles.view','roles.create'])
 
             {{-- Roles --}}
             <li class="nav-item">
@@ -185,7 +215,7 @@
                      id="roleMenu">
 
                     <ul class="nav flex-column ms-3">
-
+                       @can('roles.view')
                         <li class="nav-item">
 
                             <a href="{{ route('roles.index') }}"
@@ -197,6 +227,8 @@
                             </a>
 
                         </li>
+                        @endcan
+                        @can('roles.create')
 
                         <li class="nav-item">
 
@@ -209,13 +241,16 @@
                             </a>
 
                         </li>
+                        @endcan
 
                     </ul>
 
                 </div>
 
             </li>
+            @endcanany
 
+            @canany(['users.view','users.create'])
             {{-- Users --}}
 <li class="nav-item">
 
@@ -237,7 +272,7 @@
          id="userMenu">
 
         <ul class="nav flex-column ms-3">
-
+         @can('users.view')
             <li class="nav-item">
 
                 <a href="{{ route('users.index') }}"
@@ -249,6 +284,8 @@
                 </a>
 
             </li>
+            @endcan
+            @can('users.create')
 
             <li class="nav-item">
 
@@ -261,12 +298,58 @@
                 </a>
 
             </li>
+            @endcan
 
         </ul>
 
     </div>
 
 </li>
+@endcanany
+{{-- Activity Logs --}}
+@can('activity_logs.view')
+<li class="mt-4 mb-2 text-uppercase small text-secondary">
+    System
+</li>
+<li class="nav-item">
+
+    <a class="nav-link text-white d-flex justify-content-between align-items-center"
+       data-bs-toggle="collapse"
+       href="#activityLogMenu"
+       role="button">
+
+        <span>
+            <i class="fas fa-history me-2"></i>
+            Activity Logs
+        </span>
+
+        <i class="fas fa-angle-down"></i>
+
+    </a>
+
+    <div class="collapse" id="activityLogMenu">
+
+        <ul class="nav flex-column ms-3">
+
+            <li class="nav-item">
+
+                <a href="{{ route('activity-logs.index') }}"
+                   class="nav-link text-light {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}">
+
+                    <i class="fas fa-list me-2"></i>
+                    Activity Log List
+
+                </a>
+
+            </li>
+
+        </ul>
+
+    </div>
+
+</li>
+
+@endcan
 
         </ul>
 

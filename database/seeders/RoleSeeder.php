@@ -72,7 +72,6 @@ class RoleSeeder extends Seeder
     ->syncPermissions([
 
         'companies.view',
-        'companies.create',
         'companies.edit',
         'companies.delete',
 
@@ -124,6 +123,7 @@ class RoleSeeder extends Seeder
                 'users.view',
 
                 'users.profile.view',
+                'notifications.view',
 
                 'projects.view',
                 'projects.create',
@@ -146,6 +146,7 @@ class RoleSeeder extends Seeder
 
                 'users.activate',
                 'users.deactivate',
+                'notifications.view',
 
                 'users.profile.view',
                 'users.profile.edit',
@@ -163,10 +164,9 @@ class RoleSeeder extends Seeder
         Role::findByName('Developer')
             ->syncPermissions([
 
-                'departments.view',
-
                 'projects.view',
                 'projects.create',
+                'notifications.view',
                 'projects.edit',
 
             ]);
@@ -180,11 +180,9 @@ class RoleSeeder extends Seeder
         Role::findByName('Employee')
             ->syncPermissions([
 
-                'departments.view',
-
                 'users.profile.view',
                 'users.profile.edit',
-
+                'notifications.view',
                 'projects.view',
 
             ]);
@@ -200,6 +198,7 @@ class RoleSeeder extends Seeder
 
                 'projects.view',
                 'projects.edit',
+                'notifications.view',
 
             ]);
 
@@ -215,6 +214,7 @@ class RoleSeeder extends Seeder
                 'clients.view',
                 'clients.create',
                 'clients.edit',
+                'notifications.view',
 
             ]);
 
@@ -228,6 +228,7 @@ class RoleSeeder extends Seeder
             ->syncPermissions([
 
                 'projects.view',
+                'notifications.view',
 
             ]);
 
@@ -243,6 +244,7 @@ class RoleSeeder extends Seeder
                 'invoices.view',
                 'invoices.create',
                 'invoices.edit',
+                'notifications.view',
 
             ]);
 
@@ -257,6 +259,7 @@ class RoleSeeder extends Seeder
 
                 'clients.view',
                 'projects.view',
+                'notifications.view',
 
             ]);
 
@@ -270,6 +273,7 @@ class RoleSeeder extends Seeder
             ->syncPermissions([
 
                 'projects.view',
+                'notifications.view',
 
             ]);
     }

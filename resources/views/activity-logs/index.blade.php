@@ -504,6 +504,7 @@ Filter
             data-bs-target="#viewLogModal"
 
             data-user="{{ $log->causer?->name ?? 'System' }}"
+            data-company-id="{{ $log->properties['company_id'] ?? '-' }}"
             data-module="{{ $log->properties['module'] ?? '-' }}"
             data-action="{{ $log->properties['action'] ?? '-' }}"
             data-description="{{ $log->description }}"
@@ -593,17 +594,18 @@ Filter
 </div>
 
 
-{{-- View Model Box --}}
-<div class="modal fade" id="viewLogModal" tabindex="-1">
+{{-- View Activity Log Modal --}}
+<div class="modal fade" id="viewLogModal" tabindex="-1" aria-hidden="true">
 
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
-        <div class="modal-content">
+        <div class="modal-content border-0 shadow">
 
-
-            <div class="modal-header">
+            {{-- Header --}}
+            <div class="modal-header bg-light ">
 
                 <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>
                     Activity Log Details
                 </h5>
 
@@ -615,100 +617,144 @@ Filter
 
             </div>
 
-
-
+            {{-- Body --}}
             <div class="modal-body">
 
+                {{-- Activity Information --}}
+                <div class="card border-0 shadow-sm mb-4">
 
-                <table class="table table-bordered">
+                    <div class="card-header bg-light">
 
-                    <tr>
-                        <th width="200">User</th>
-                        <td id="logUser"></td>
-                    </tr>
+                        <strong>
+                            <i class="fas fa-info-circle me-2"></i>
+                            Activity Information
+                        </strong>
 
+                    </div>
 
-                    <tr>
-                        <th>Module</th>
-                        <td id="logModule"></td>
-                    </tr>
+                    <div class="card-body p-0">
 
+                        <div class="table-responsive">
 
-                    <tr>
-                        <th>Action</th>
-                        <td id="logAction"></td>
-                    </tr>
+                            <table class="table table-bordered align-middle mb-0">
 
+                                <tbody>
 
-                    <tr>
-                        <th>Description</th>
-                        <td id="logDescription"></td>
-                    </tr>
+                                    <tr>
+                                        <th width="220">User</th>
+                                        <td id="logUser"></td>
+                                    </tr>
+                                    <tr>
+    <th>Company ID</th>
+    <td>
+        <span class="badge bg-secondary fs-6" id="logCompanyId"></span>
+    </td>
+</tr>
 
+                                    <tr>
+                                        <th>Module</th>
+                                        <td>
+                                            <span class="badge bg-primary fs-6" id="logModule"></span>
+                                        </td>
+                                    </tr>
 
-                    <tr>
-                        <th>IP Address</th>
-                        <td id="logIp"></td>
-                    </tr>
+                                    <tr>
+                                        <th>Action</th>
+                                        <td>
+                                            <span class="badge bg-warning text-dark fs-6" id="logAction"></span>
+                                        </td>
+                                    </tr>
 
+                                    <tr>
+                                        <th>Description</th>
+                                        <td id="logDescription"></td>
+                                    </tr>
 
-                    <tr>
-                        <th>Browser</th>
-                        <td id="logBrowser"></td>
-                    </tr>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <td id="logIp"></td>
+                                    </tr>
 
+                                    <tr>
+                                        <th>Browser</th>
+                                        <td id="logBrowser"></td>
+                                    </tr>
 
-                    <tr>
-                        <th>Date</th>
-                        <td id="logDate"></td>
-                    </tr>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <td id="logDate"></td>
+                                    </tr>
 
+                                </tbody>
 
-                </table>
+                            </table>
 
+                        </div>
 
-
-
-                {{-- Show only if old/new values exist --}}
-                <div id="changesSection" style="display:none;">
-
-
-                    <h6 class="mt-3">
-                        Changes
-                    </h6>
-
-
-
-                    <table class="table table-bordered">
-
-
-                        <thead>
-
-                            <tr>
-                                <th>Field</th>
-                                <th>Old Value</th>
-                                <th>New Value</th>
-                            </tr>
-
-                        </thead>
-
-
-
-                        <tbody id="changesTableBody">
-
-                        </tbody>
-
-
-
-                    </table>
-
+                    </div>
 
                 </div>
 
+                {{-- Changes Section --}}
+                <div id="changesSection" style="display:none;">
 
+                    <div class="card border-0 shadow-sm">
+
+                        <div class="card-header bg-light">
+
+                            <strong>
+                                <i class="fas fa-exchange-alt me-2"></i>
+                                Changes
+                            </strong>
+
+                        </div>
+
+                        <div class="card-body p-0">
+
+                            <div class="table-responsive">
+
+                                <table class="table table-hover table-bordered align-middle mb-0">
+
+                                    <thead class="table-light">
+
+                                        <tr>
+                                            <th width="20%">Field</th>
+                                            <th width="40%">Old Value</th>
+                                            <th width="40%">New Value</th>
+                                        </tr>
+
+                                    </thead>
+
+                                    <tbody id="changesTableBody">
+
+                                    </tbody>
+
+                                </table>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
 
             </div>
 
+            {{-- Footer --}}
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal">
+
+                    <i class="fas fa-times me-1"></i>
+                    Close
+
+                </button>
+
+            </div>
 
         </div>
 
@@ -719,92 +765,6 @@ Filter
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-
-    // View Log Modal
-    document.querySelectorAll('.view-log-btn').forEach(button => {
-
-        button.addEventListener('click', function () {
-
-            document.getElementById('logUser').textContent = this.dataset.user;
-            document.getElementById('logModule').textContent = this.dataset.module;
-            document.getElementById('logAction').textContent = this.dataset.action;
-            document.getElementById('logDescription').textContent = this.dataset.description;
-            document.getElementById('logIp').textContent = this.dataset.ip;
-            document.getElementById('logBrowser').textContent = this.dataset.browser;
-            document.getElementById('logDate').textContent = this.dataset.date;
-
-            let oldData = {};
-            let newData = {};
-
-            try {
-                oldData = JSON.parse(this.dataset.old || '{}');
-            } catch (e) {}
-
-            try {
-                newData = JSON.parse(this.dataset.new || '{}');
-            } catch (e) {}
-
-            const tbody = document.getElementById('changesTableBody');
-            const section = document.getElementById('changesSection');
-
-            tbody.innerHTML = '';
-
-            if (
-                Object.keys(oldData).length > 0 ||
-                Object.keys(newData).length > 0
-            ) {
-                section.style.display = 'block';
-
-                const fields = new Set([
-                    ...Object.keys(oldData),
-                    ...Object.keys(newData)
-                ]);
-
-                fields.forEach(field => {
-
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${field}</td>
-                            <td>${oldData[field] ?? '-'}</td>
-                            <td>${newData[field] ?? '-'}</td>
-                        </tr>
-                    `;
-                });
-
-            } else {
-
-                section.style.display = 'none';
-            }
-        });
-    });
-
-    // Archive Activity Log
-    document.querySelectorAll('.archive-log-form').forEach(form => {
-
-        form.addEventListener('submit', function (e) {
-
-            e.preventDefault();
-
-            Swal.fire({
-                title: 'Archive Activity Log?',
-                text: 'This log will be removed from the activity logs list.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Yes, Archive',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-
-            });
-
-        });
-
-    });
-
     @if(session('success'))
     Swal.fire({
         icon: 'success',
@@ -817,4 +777,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+<script src="{{ asset('assets/js/pages/activity-logs.js') }}"></script>
 @endpush

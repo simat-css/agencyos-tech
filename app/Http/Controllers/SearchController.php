@@ -30,9 +30,7 @@ class SearchController extends Controller
                 'type' => 'User',
                 'name' => $user->name,
                 'icon' => 'fas fa-user',
-                'url'  => route('users.index', [
-                    'search' => $user->name
-                ]),
+                'url'  => route('users.show', $user),
                 'subtitle' => $user->email,
             ];
         }
@@ -47,9 +45,7 @@ class SearchController extends Controller
                 'type' => 'Company',
                 'name' => $company->name,
                 'icon' => 'fas fa-building',
-                'url'  => route('companies.index', [
-                    'search' => $company->name
-                ]),
+                'url'  => route('companies.show', $company),
                 'subtitle' => 'Company',
             ];
         }
@@ -66,9 +62,7 @@ class SearchController extends Controller
         'type' => 'Department',
         'name' => $department->name,
         'icon' => 'fas fa-sitemap',
-        'url'  => route('departments.index', [
-            'search' => $department->name
-        ]),
+        'url'  => route('departments.show', $department),
         'subtitle' => $department->company->name ?? 'No Company',
     ];
 }
@@ -83,9 +77,7 @@ class SearchController extends Controller
                 'type' => 'Role',
                 'name' => $role->name,
                 'icon' => 'fas fa-user-shield',
-                'url'  => route('roles.index', [
-                    'search' => $role->name
-                ]),
+                'url'  => route('roles.show', $role),
                 'subtitle' => 'Role',
             ];
         }

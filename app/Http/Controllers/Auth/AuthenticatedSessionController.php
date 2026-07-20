@@ -25,16 +25,69 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-   public function store(LoginRequest $request): RedirectResponse
+//    public function store(LoginRequest $request): RedirectResponse
+// {
+//     $request->authenticate();
+
+//     $request->session()->regenerate();
+
+//     $agent = new Agent();
+
+//     UserSession::create([
+//         'user_id'    => auth()->id(),
+//         'session_id' => session()->getId(),
+//         'ip_address' => $request->ip(),
+//         'user_agent' => $request->userAgent(),
+//         'browser'    => $agent->browser(),
+//         'platform'   => $agent->platform(),
+//         'login_at'   => now(),
+//         'is_active'  => true,
+//     ]);
+
+//     auth()->user()->notify(
+//     new LoginAlertNotification(
+//         'You have successfully logged in to AgencyOS.'
+//     )
+//     );
+
+//     return redirect()->intended(route('dashboard', absolute: false));
+// }
+
+//updated Store fn 
+public function store(LoginRequest $request): RedirectResponse
 {
     $request->authenticate();
 
+    $user = auth()->user();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | User Status Check
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$user->status) {
+
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return back()->withErrors([
+            'email' => 'Your account is inactive. Please contact administrator.'
+        ]);
+    }
+
+
     $request->session()->regenerate();
+
 
     $agent = new Agent();
 
+
     UserSession::create([
-        'user_id'    => auth()->id(),
+        'user_id'    => $user->id,
         'session_id' => session()->getId(),
         'ip_address' => $request->ip(),
         'user_agent' => $request->userAgent(),
@@ -44,13 +97,16 @@ class AuthenticatedSessionController extends Controller
         'is_active'  => true,
     ]);
 
-    auth()->user()->notify(
-    new LoginAlertNotification(
-        'You have successfully logged in to AgencyOS.'
-    )
+
+    $user->notify(
+        new LoginAlertNotification(
+            'You have successfully logged in to AgencyOS.'
+        )
     );
 
-    return redirect()->intended(route('dashboard', absolute: false));
+
+    return redirect()
+        ->intended(route('dashboard', absolute: false));
 }
 
     /**

@@ -8,18 +8,76 @@ use App\Models\User;
 
 class ActivityLogController extends Controller
 {
-    public function index(Request $request)
+   public function index(Request $request)
 {
+    $authUser = auth()->user();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Company Users (Fallback for old logs)
+    |--------------------------------------------------------------------------
+    */
+
+    $companyUserIds = collect();
+
+    if (!$authUser->hasRole('Super Admin')) {
+
+        $companyUserIds = User::where(
+            'company_id',
+            $authUser->company_id
+        )
+        ->pluck('id');
+    }
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Main Activity Logs Query
+    |--------------------------------------------------------------------------
+    */
+
     $query = Activity::with('causer')
         ->latest();
+
+
+ if ($authUser->hasRole('Company Admin')) {
+
+    $query->where(function ($q) use ($authUser, $companyUserIds) {
+
+        $q->where(
+            'properties->company_id',
+            $authUser->company_id
+        )
+
+        ->orWhereIn(
+            'causer_id',
+            $companyUserIds
+        );
+
+    });
+
+} elseif (!$authUser->hasRole('Super Admin')) {
+
+    $query->where(
+        'causer_id',
+        $authUser->id
+    );
+
+}
+
 
 
     // User Filter
     if ($request->user_id) {
 
-        $query->where('causer_id', $request->user_id);
-
+        $query->where(
+            'causer_id',
+            $request->user_id
+        );
     }
+
 
 
     // Module Filter
@@ -29,8 +87,8 @@ class ActivityLogController extends Controller
             'properties->module',
             $request->module
         );
-
     }
+
 
 
     // Action Filter
@@ -40,8 +98,8 @@ class ActivityLogController extends Controller
             'properties->action',
             $request->action
         );
-
     }
+
 
 
     // Date Filter
@@ -52,7 +110,6 @@ class ActivityLogController extends Controller
             '>=',
             $request->date_from
         );
-
     }
 
 
@@ -63,134 +120,306 @@ class ActivityLogController extends Controller
             '<=',
             $request->date_to
         );
-
     }
+
 
 
     // Search
     if ($request->search) {
 
-        $query->where(function($q) use($request){
+        $query->where(function ($q) use ($request) {
 
-            $q->where('description','like',
-                '%'.$request->search.'%'
+            $q->where(
+                'description',
+                'like',
+                '%' . $request->search . '%'
             )
-            ->orWhereHas('causer',function($user) use($request){
+            ->orWhereHas('causer', function ($user) use ($request) {
 
-                $user->where('name','like',
-                    '%'.$request->search.'%'
+                $user->where(
+                    'name',
+                    'like',
+                    '%' . $request->search . '%'
                 );
 
             });
 
         });
-
     }
 
 
-    $logs = $query->paginate(20)
-                  ->withQueryString();
-    
-                  
-    $totalLogs = Activity::count();
 
-
-$todayLogs = Activity::whereDate(
-    'created_at',
-    today()
-)->count();
-
-
-$weekLogs = Activity::whereBetween(
-    'created_at',
-    [
-        now()->startOfWeek(),
-        now()->endOfWeek()
-    ]
-)->count();
-
-
-$monthLogs = Activity::whereMonth(
-    'created_at',
-    now()->month
-)->whereYear(
-    'created_at',
-    now()->year
-)->count();
+    $logs = $query
+        ->paginate(20)
+        ->withQueryString();
 
 
 
-$createdLogs = Activity::whereJsonContains(
-    'properties->action',
-    'created'
-)->count();
+    /*
+    |--------------------------------------------------------------------------
+    | Statistics
+    |--------------------------------------------------------------------------
+    */
+
+    $statsQuery = Activity::query();
 
 
-$updatedLogs = Activity::whereJsonContains(
-    'properties->action',
-    'updated'
-)->count();
+if ($authUser->hasRole('Company Admin')) {
+
+    $statsQuery->where(function ($q) use ($authUser, $companyUserIds) {
+
+        $q->where(
+            'properties->company_id',
+            $authUser->company_id
+        )
+        ->orWhereIn(
+            'causer_id',
+            $companyUserIds
+        );
+
+    });
+
+} elseif (!$authUser->hasRole('Super Admin')) {
+
+    $statsQuery->where(
+        'causer_id',
+        $authUser->id
+    );
+
+}
 
 
-$deletedLogs = Activity::whereJsonContains(
-    'properties->action',
-    'deleted'
-)->count(); 
 
-$restoredLogs = Activity::whereJsonContains(
-    'properties->action',
-    'restored'
-)->count();
-
-$statusLogs = Activity::whereJsonContains(
-    'properties->action',
-    'status_updated'
-)->count();
-
-$bulkLogs = Activity::where(function ($q) {
-    $q->whereJsonContains('properties->action', 'bulk_activate')
-      ->orWhereJsonContains('properties->action', 'bulk_deactivate')
-      ->orWhereJsonContains('properties->action', 'bulk_deleted');
-})->count();
+    $totalLogs = (clone $statsQuery)->count();
 
 
-    $users = User::select('id','name')
-                 ->orderBy('name')
-                 ->get();
+    $todayLogs = (clone $statsQuery)
+        ->whereDate('created_at', today())
+        ->count();
 
 
-    $modules = Activity::whereNotNull('properties')
+    $weekLogs = (clone $statsQuery)
+        ->whereBetween(
+            'created_at',
+            [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ]
+        )
+        ->count();
+
+
+    $monthLogs = (clone $statsQuery)
+        ->whereMonth('created_at', now()->month)
+        ->whereYear('created_at', now()->year)
+        ->count();
+
+
+
+    $createdLogs = (clone $statsQuery)
+        ->whereJsonContains(
+            'properties->action',
+            'created'
+        )
+        ->count();
+
+
+    $updatedLogs = (clone $statsQuery)
+        ->whereJsonContains(
+            'properties->action',
+            'updated'
+        )
+        ->count();
+
+
+    $deletedLogs = (clone $statsQuery)
+        ->whereJsonContains(
+            'properties->action',
+            'deleted'
+        )
+        ->count();
+
+
+    $restoredLogs = (clone $statsQuery)
+        ->whereJsonContains(
+            'properties->action',
+            'restored'
+        )
+        ->count();
+
+
+    $statusLogs = (clone $statsQuery)
+        ->whereJsonContains(
+            'properties->action',
+            'status_updated'
+        )
+        ->count();
+
+
+
+    $bulkLogs = (clone $statsQuery)
+        ->where(function ($q) {
+
+            $q->whereJsonContains(
+                'properties->action',
+                'bulk_activate'
+            )
+            ->orWhereJsonContains(
+                'properties->action',
+                'bulk_deactivate'
+            )
+            ->orWhereJsonContains(
+                'properties->action',
+                'bulk_deleted'
+            );
+
+        })
+        ->count();
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Users Dropdown
+    |--------------------------------------------------------------------------
+    */
+
+    $users = collect();
+
+if ($authUser->hasRole('Super Admin')) {
+
+    $users = User::select(
+            'id',
+            'name'
+        )
+        ->orderBy('name')
+        ->get();
+
+} elseif ($authUser->hasRole('Company Admin')) {
+
+    $users = User::where(
+            'company_id',
+            $authUser->company_id
+        )
+        ->select(
+            'id',
+            'name'
+        )
+        ->orderBy('name')
+        ->get();
+}
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modules Dropdown
+    |--------------------------------------------------------------------------
+    */
+
+    $moduleQuery = Activity::query();
+
+
+    if ($authUser->hasRole('Company Admin')) {
+
+    $moduleQuery->where(function ($q) use ($authUser, $companyUserIds) {
+
+        $q->where(
+            'properties->company_id',
+            $authUser->company_id
+        )
+        ->orWhereIn(
+            'causer_id',
+            $companyUserIds
+        );
+
+    });
+
+} elseif (!$authUser->hasRole('Super Admin')) {
+
+    $moduleQuery->where(
+        'causer_id',
+        $authUser->id
+    );
+
+}
+
+
+    $modules = $moduleQuery
+        ->whereNotNull('properties')
         ->get()
         ->pluck('properties.module')
         ->filter()
-        ->unique();
+        ->unique()
+        ->values();
 
 
-    $actions = Activity::whereNotNull('properties')
+
+    /*
+    |--------------------------------------------------------------------------
+    | Actions Dropdown
+    |--------------------------------------------------------------------------
+    */
+
+    $actionQuery = Activity::query();
+
+
+    if ($authUser->hasRole('Company Admin')) {
+
+    $actionQuery->where(function ($q) use ($authUser, $companyUserIds) {
+
+        $q->where(
+            'properties->company_id',
+            $authUser->company_id
+        )
+        ->orWhereIn(
+            'causer_id',
+            $companyUserIds
+        );
+
+    });
+
+} elseif (!$authUser->hasRole('Super Admin')) {
+
+    $actionQuery->where(
+        'causer_id',
+        $authUser->id
+    );
+
+}
+
+
+    $actions = $actionQuery
+        ->whereNotNull('properties')
         ->get()
         ->pluck('properties.action')
         ->filter()
-        ->unique();
+        ->unique()
+        ->values();
+
 
 
     return view(
-    'activity-logs.index',
-    compact(
-        'logs',
-        'users',
-        'modules',
-        'actions',
-        'totalLogs',
-        'todayLogs',
-        'weekLogs',
-        'monthLogs',
-        'createdLogs',
-        'updatedLogs',
-        'deletedLogs'
-    )
-);
+        'activity-logs.index',
+        compact(
+            'logs',
+            'users',
+            'modules',
+            'actions',
+            'totalLogs',
+            'todayLogs',
+            'weekLogs',
+            'monthLogs',
+            'createdLogs',
+            'updatedLogs',
+            'deletedLogs',
+            'restoredLogs',
+            'statusLogs',
+            'bulkLogs'
+        )
+    );
 }
-
 public function destroy(Activity $activity)
 {
     $activity->delete();

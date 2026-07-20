@@ -125,6 +125,11 @@
        id="password"
        name="password"
        class="form-control">
+       @error('password')
+    <small class="text-danger">
+        {{ $message }}
+    </small>
+@enderror
 
 
                             </div>
@@ -142,8 +147,7 @@
 
                                 <select name="company_id"
         id="company_id"
-        class="form-select @error('company_id') is-invalid @enderror"
-        required>
+        class="form-select @error('company_id') is-invalid @enderror">
 
     <option value="">
         Select Company
@@ -160,6 +164,11 @@
     @endforeach
 
                                 </select>
+                                 @error('company_id')
+    <small class="text-danger">
+        {{ $message }}
+    </small>
+@enderror
 
 
                             </div>
@@ -230,6 +239,11 @@
 
 
                                 </select>
+                                @error('role')
+    <small class="text-danger">
+        {{ $message }}
+    </small>
+@enderror
 
 
                             </div>
@@ -281,6 +295,11 @@
        id="profile_photo"
        name="profile_photo"
        class="form-control">
+       @error('profile_photo')
+    <small class="text-danger">
+        {{ $message }}
+    </small>
+@enderror
 
 
                             </div>

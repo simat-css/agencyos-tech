@@ -182,6 +182,36 @@ class UserService
             )
         );
 
+        /*
+|--------------------------------------------------------------------------
+| Creator Notification
+|--------------------------------------------------------------------------
+*/
+
+        $authUser->notify(
+            new UserActionNotification(
+                "User {$user->name} has been created successfully."
+            )
+        );
+
+        /*
+|--------------------------------------------------------------------------
+| Super Admin Notification
+|--------------------------------------------------------------------------
+*/
+
+        if (!$authUser->hasRole("Super Admin")) {
+            $superAdmins = User::role("Super Admin")->get();
+
+            foreach ($superAdmins as $admin) {
+                $admin->notify(
+                    new UserActionNotification(
+                        "New user {$user->name} has been created by {$authUser->name}."
+                    )
+                );
+            }
+        }
+
         return $user;
     }
 
@@ -427,6 +457,26 @@ class UserService
             $user->notify(new UserActionNotification($message));
         }
 
+        if (!empty($changes)) {
+            $authUser->notify(
+                new UserActionNotification(
+                    "User {$user->name} has been updated successfully."
+                )
+            );
+
+            if (!$authUser->hasRole("Super Admin")) {
+                $superAdmins = User::role("Super Admin")->get();
+
+                foreach ($superAdmins as $admin) {
+                    $admin->notify(
+                        new UserActionNotification(
+                            "User {$user->name} has been updated by {$authUser->name}."
+                        )
+                    );
+                }
+            }
+        }
+
         return $user->fresh();
     }
     /*
@@ -514,6 +564,18 @@ class UserService
                 "User {$deletedUserName} has been deleted."
             )
         );
+
+        if (!$authUser->hasRole("Super Admin")) {
+            $superAdmins = User::role("Super Admin")->get();
+
+            foreach ($superAdmins as $admin) {
+                $admin->notify(
+                    new UserActionNotification(
+                        "User {$deletedUserName} has been deleted by {$authUser->name}."
+                    )
+                );
+            }
+        }
 
         return true;
     }
@@ -622,6 +684,24 @@ class UserService
                     : "Your account has been deactivated."
             )
         );
+
+        $authUser->notify(
+            new UserActionNotification(
+                "User {$user->name} status has been updated successfully."
+            )
+        );
+
+        if (!$authUser->hasRole("Super Admin")) {
+            $superAdmins = User::role("Super Admin")->get();
+
+            foreach ($superAdmins as $admin) {
+                $admin->notify(
+                    new UserActionNotification(
+                        "User {$user->name} status was changed by {$authUser->name}."
+                    )
+                );
+            }
+        }
 
         return $user;
     }
@@ -783,6 +863,24 @@ class UserService
                             []
                         );
 
+                        $authUser->notify(
+                            new UserActionNotification(
+                                "User {$user->name} has been deleted using bulk action."
+                            )
+                        );
+
+                        if (!$authUser->hasRole("Super Admin")) {
+                            $superAdmins = User::role("Super Admin")->get();
+
+                            foreach ($superAdmins as $admin) {
+                                $admin->notify(
+                                    new UserActionNotification(
+                                        "User {$user->name} was deleted by {$authUser->name} using bulk action."
+                                    )
+                                );
+                            }
+                        }
+
                         $user->delete();
 
                         $processedCount++;
@@ -808,6 +906,23 @@ class UserService
                 );
 
                 $user->notify(new UserActionNotification($message));
+                $authUser->notify(
+                    new UserActionNotification(
+                        "Bulk {$data["action"]} completed for user {$user->name}."
+                    )
+                );
+
+                if (!$authUser->hasRole("Super Admin")) {
+                    $superAdmins = User::role("Super Admin")->get();
+
+                    foreach ($superAdmins as $admin) {
+                        $admin->notify(
+                            new UserActionNotification(
+                                "User {$user->name} was {$data["action"]}d by {$authUser->name} using bulk action."
+                            )
+                        );
+                    }
+                }
 
                 $processedCount++;
             }
@@ -943,6 +1058,36 @@ class UserService
                     "status" => $user->status ? "Active" : "Inactive",
                 ]
             );
+
+            $user->notify(
+                new UserActionNotification("Your account has been restored.")
+            );
+
+            auth()
+                ->user()
+                ->notify(
+                    new UserActionNotification(
+                        "User {$user->name} has been restored successfully."
+                    )
+                );
+
+            if (
+                !auth()
+                    ->user()
+                    ->hasRole("Super Admin")
+            ) {
+                $superAdmins = User::role("Super Admin")->get();
+
+                foreach ($superAdmins as $admin) {
+                    $admin->notify(
+                        new UserActionNotification(
+                            "User {$user->name} has been restored by " .
+                                auth()->user()->name .
+                                "."
+                        )
+                    );
+                }
+            }
         }
 
         return $restored;
