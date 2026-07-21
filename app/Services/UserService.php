@@ -45,6 +45,8 @@ class UserService
             throw new \Exception("Selected company is inactive.");
         }
 
+        $data["employee_id"] = User::generateEmployeeId($data["company_id"]);
+
         /*
     |--------------------------------------------------------------------------
     | Company Admin Restriction
@@ -145,11 +147,32 @@ class UserService
             $user->load(["company", "department", "roles"]);
 
             $newData = [
+                "employee_id" => $user->employee_id,
+
                 "name" => $user->name,
+
                 "email" => $user->email,
+
+                "designation" => $user->designation,
+
+                "phone" => $user->phone,
+
+                "gender" => $user->gender,
+
+                "dob" => $user->dob,
+
+                "joining_date" => $user->joining_date,
+
+                "emergency_contact" => $user->emergency_contact,
+
+                "address" => $user->address,
+
                 "company" => $user->company?->name,
+
                 "department" => $user->department?->name,
+
                 "role" => $user->roles->pluck("name")->implode(", "),
+
                 "status" => $user->status ? "Active" : "Inactive",
             ];
 
@@ -373,11 +396,32 @@ class UserService
             $user->load(["company", "department", "roles"]);
 
             $oldData = [
+                "employee_id" => $user->employee_id,
+
                 "name" => $user->name,
+
                 "email" => $user->email,
+
+                "designation" => $user->designation,
+
+                "phone" => $user->phone,
+
+                "gender" => $user->gender,
+
+                "dob" => $user->dob,
+
+                "joining_date" => $user->joining_date,
+
+                "emergency_contact" => $user->emergency_contact,
+
+                "address" => $user->address,
+
                 "company" => $user->company?->name,
+
                 "department" => $user->department?->name,
+
                 "role" => $user->roles->pluck("name")->implode(", "),
+
                 "status" => $user->status ? "Active" : "Inactive",
             ];
 
@@ -398,11 +442,32 @@ class UserService
                 ->load(["company", "department", "roles"]);
 
             $newData = [
+                "employee_id" => $freshUser->employee_id,
+
                 "name" => $freshUser->name,
+
                 "email" => $freshUser->email,
+
+                "designation" => $freshUser->designation,
+
+                "phone" => $freshUser->phone,
+
+                "gender" => $freshUser->gender,
+
+                "dob" => $freshUser->dob,
+
+                "joining_date" => $freshUser->joining_date,
+
+                "emergency_contact" => $freshUser->emergency_contact,
+
+                "address" => $freshUser->address,
+
                 "company" => $freshUser->company?->name,
+
                 "department" => $freshUser->department?->name,
+
                 "role" => $freshUser->roles->pluck("name")->implode(", "),
+
                 "status" => $freshUser->status ? "Active" : "Inactive",
             ];
 

@@ -13,6 +13,7 @@ class Company extends Model
 
     protected $fillable = [
         'name',
+        'code',
         'email',
         'phone',
         'website',
@@ -63,4 +64,25 @@ class Company extends Model
     {
         return $query->where('status', true);
     }
+    public static function generateCompanyCode(string $name): string
+{
+    $words = preg_split('/\s+/', trim($name));
+
+    $baseCode = collect($words)
+        ->filter()
+        ->map(fn ($word) => strtoupper(substr($word, 0, 1)))
+        ->join('');
+
+    $code = $baseCode;
+    $counter = 1;
+
+    while (self::where('code', $code)->exists()) {
+
+        $code = $baseCode . $counter;
+
+        $counter++;
+    }
+
+    return $code;
+}
 }

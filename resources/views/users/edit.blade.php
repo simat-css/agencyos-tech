@@ -110,6 +110,136 @@
 
                             </div>
 
+                            {{-- Employee ID --}}
+<div class="col-md-6">
+
+<label class="form-label">
+Employee ID
+</label>
+
+<input type="text"
+class="form-control"
+value="{{ $user->employee_id }}"
+readonly>
+
+</div>
+
+
+{{-- Designation --}}
+<div class="col-md-6">
+
+<label class="form-label">
+Designation
+</label>
+
+<input type="text"
+name="designation"
+class="form-control"
+value="{{ old('designation',$user->designation) }}">
+
+</div>
+
+
+{{-- Phone --}}
+<div class="col-md-6">
+
+<label class="form-label">
+Phone
+</label>
+
+<input type="text"
+name="phone"
+class="form-control"
+value="{{ old('phone',$user->phone) }}">
+
+</div>
+
+
+{{-- Gender --}}
+<div class="col-md-6">
+
+<label class="form-label">
+Gender
+</label>
+
+<select name="gender" class="form-select">
+
+<option value="">Select Gender</option>
+
+<option value="Male"
+{{ $user->gender=="Male"?'selected':'' }}>
+Male
+</option>
+
+<option value="Female"
+{{ $user->gender=="Female"?'selected':'' }}>
+Female
+</option>
+
+
+</select>
+
+</div>
+
+
+{{-- DOB --}}
+<div class="col-md-6">
+
+    <label class="form-label">
+        Date of Birth
+    </label>
+
+    <input type="date"
+           name="dob"
+           class="form-control"
+           value="{{ old('dob', $user->dob ? \Carbon\Carbon::parse($user->dob)->format('Y-m-d') : '') }}">
+
+</div>
+
+
+{{-- Joining Date --}}
+<div class="col-md-6">
+
+    <label class="form-label">
+        Joining Date
+    </label>
+
+    <input type="date"
+           name="joining_date"
+           class="form-control"
+           value="{{ old('joining_date', $user->joining_date ? \Carbon\Carbon::parse($user->joining_date)->format('Y-m-d') : '') }}">
+
+</div>
+
+
+{{-- Emergency Contact --}}
+<div class="col-md-6">
+
+<label class="form-label">
+Emergency Contact
+</label>
+
+<input type="text"
+name="emergency_contact"
+class="form-control"
+value="{{ old('emergency_contact',$user->emergency_contact) }}">
+
+</div>
+
+
+{{-- Address --}}
+<div class="col-md-12">
+
+<label class="form-label">
+Address
+</label>
+
+<textarea name="address"
+class="form-control"
+rows="3">{{ old('address',$user->address) }}</textarea>
+
+</div>
+
 
 
 

@@ -238,15 +238,36 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            "name" => "required|string|max:255",
-            "email" => "required|email|unique:users,email",
-            "password" => "required|min:8",
-            "company_id" => "required|exists:companies,id",
-            "department_id" => "nullable|exists:departments,id",
-            "role" => "required|exists:roles,name",
-            "status" => "required|boolean",
-            "profile_photo" => "nullable|image|max:2048",
-        ]);
+    "name" => "required|string|max:255",
+
+    "email" => "required|email|unique:users,email",
+
+    "password" => "required|min:8",
+
+    "designation" => "nullable|string|max:255",
+
+    "phone" => "nullable|string|max:20",
+
+    "gender" => "nullable|string|max:20",
+
+    "dob" => "nullable|date",
+
+    "joining_date" => "nullable|date",
+
+    "emergency_contact" => "nullable|string|max:20",
+
+    "address" => "nullable|string",
+
+    "company_id" => "required|exists:companies,id",
+
+    "department_id" => "nullable|exists:departments,id",
+
+    "role" => "required|exists:roles,name",
+
+    "status" => "required|boolean",
+
+    "profile_photo" => "nullable|image|max:2048",
+]);
 
         $validated["created_by"] = auth()->id();
 
@@ -312,12 +333,9 @@ class UserController extends Controller
         }
 
         $departments = Department::active()
-
-            ->where("company_id", $user->company_id)
-
-            ->orderBy("name")
-
-            ->get();
+    ->where("company_id", $user->company_id)
+    ->orderBy("name")
+    ->get();
 
         if (
             auth()
@@ -372,6 +390,19 @@ class UserController extends Controller
         $validated = $request->validate([
             "name" => "required|string|max:255",
             "email" => "required|email|unique:users,email," . $user->id,
+            "designation"=>"nullable|string|max:255",
+
+"phone"=>"nullable|string|max:20",
+
+"gender"=>"nullable|string",
+
+"dob"=>"nullable|date",
+
+"joining_date"=>"nullable|date",
+
+"emergency_contact"=>"nullable|string|max:20",
+
+"address"=>"nullable|string",
             "company_id" => "required|exists:companies,id",
             "department_id" => "nullable|exists:departments,id",
             "role" => "required|exists:roles,name",

@@ -49,10 +49,9 @@ class StoreUserRequest extends FormRequest
 
             // Authentication
             'password' => [
-                'required',
-                'string',
-                'min:8',
-                'confirmed'
+            'required',
+            'string',
+            'min:8'
             ],
 
             // Role Assignment
@@ -66,6 +65,43 @@ class StoreUserRequest extends FormRequest
                 'required',
                 'boolean'
             ],
+            'designation' => [
+    'nullable',
+    'string',
+    'max:100'
+],
+
+'phone' => [
+    'nullable',
+    'string',
+    'max:20'
+],
+
+'gender' => [
+    'nullable',
+    'in:Male,Female,Other'
+],
+
+'dob' => [
+    'nullable',
+    'date'
+],
+
+'joining_date' => [
+    'nullable',
+    'date'
+],
+
+'emergency_contact' => [
+    'nullable',
+    'string',
+    'max:20'
+],
+
+'address' => [
+    'nullable',
+    'string'
+],
 
             // Profile Photo
             'profile_photo' => [

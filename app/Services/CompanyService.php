@@ -33,6 +33,7 @@ class CompanyService
             }
 
             $data["created_by"] = Auth::id();
+            $data["code"] = Company::generateCompanyCode($data["name"]);
 
             $company = Company::create($data);
 
