@@ -498,7 +498,125 @@ Last Updated
 @endif
 
 
+{{-- Security Information --}}
+<div class="card shadow-sm border-0 mb-4">
 
+    <div class="card-header bg-white">
+
+        <h5 class="mb-0">
+            <i class="fas fa-shield-alt text-primary me-2"></i>
+            Security Information
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            {{-- Last Login --}}
+            <div class="col-md-6 mb-3">
+
+                <label class="text-muted">
+                    Last Login
+                </label>
+
+                <h6>
+                    {{ $lastSession?->login_at
+                        ? \Carbon\Carbon::parse($lastSession->login_at)->format('d M Y h:i A')
+                        : 'Never Logged In'
+                    }}
+                </h6>
+
+            </div>
+
+            {{-- Current Browser --}}
+            <div class="col-md-6 mb-3">
+
+                <label class="text-muted">
+                    Current Browser
+                </label>
+
+                <h6>
+                    {{ $lastSession?->browser ?? 'Unknown' }}
+                </h6>
+
+            </div>
+
+            {{-- Current Device --}}
+            <div class="col-md-6 mb-3">
+
+                <label class="text-muted">
+                    Current Device
+                </label>
+
+                <h6>
+                    {{ $lastSession?->platform ?? 'Unknown' }}
+                </h6>
+
+            </div>
+
+            {{-- IP Address --}}
+            <div class="col-md-6 mb-3">
+
+                <label class="text-muted">
+                    IP Address
+                </label>
+
+                <h6>
+                    {{ $lastSession?->ip_address ?? 'Unknown' }}
+                </h6>
+
+            </div>
+
+            {{-- Session Status --}}
+            <div class="col-md-6 mb-3">
+
+                <label class="text-muted">
+                    Session Status
+                </label>
+
+                <h6>
+
+                    @if($lastSession?->is_active)
+
+                        <span class="badge bg-success">
+                            Active Session
+                        </span>
+
+                    @else
+
+                        <span class="badge bg-secondary">
+                            Logged Out
+                        </span>
+
+                    @endif
+
+                </h6>
+
+            </div>
+
+            {{-- Login Time --}}
+            <div class="col-md-6 mb-3">
+
+                <label class="text-muted">
+                    Login Time
+                </label>
+
+                <h6>
+                    {{ $lastSession?->login_at
+                        ? \Carbon\Carbon::parse($lastSession->login_at)->diffForHumans()
+                        : '-'
+                    }}
+                </h6>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 {{-- Quick Stats --}}
 

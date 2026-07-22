@@ -131,6 +131,8 @@ class PermissionSeeder extends Seeder
             'notifications.create',
             'notifications.delete',
 
+            'login-history.view',
+
             /*
             |--------------------------------------------------------------------------
             | AI Action Engine

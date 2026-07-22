@@ -11,6 +11,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\LoginHistoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -334,10 +335,24 @@ Route::middleware('auth')
     });
 
 //Profile
-Route::get("/my-profile", function () {
-    return view("profile.show");
-})
-    ->middleware("auth")
-    ->name("profile.show");
+Route::get('/my-profile', [ProfileController::class, 'show'])
+    ->middleware('auth')
+    ->name('profile.show');
+
+    //Login History
+Route::middleware(['auth'])
+    ->prefix('login-history')
+    ->name('login-history.')
+    ->group(function () {
+
+        Route::get('/', [LoginHistoryController::class, 'index'])
+            ->middleware('permission:login-history.view')
+            ->name('index');
+
+        Route::delete('/{session}', [LoginHistoryController::class, 'destroy'])
+            ->middleware('role:Super Admin')
+            ->name('destroy');
+
+    });
 
 require __DIR__ . "/auth.php";

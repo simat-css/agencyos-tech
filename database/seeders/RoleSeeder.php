@@ -105,6 +105,7 @@ class RoleSeeder extends Seeder
         'activity_logs.view',
 
         'notifications.view',
+        'login-history.view',
         'ai.commands.view',
         'ai.commands.execute',
 

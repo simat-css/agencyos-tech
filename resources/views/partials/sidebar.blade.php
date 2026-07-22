@@ -307,41 +307,69 @@
 </li>
 @endcanany
 {{-- Activity Logs --}}
-@can('activity_logs.view')
+{{-- System --}}
+@canany(['activity_logs.view','login_history.view'])
+
 <li class="mt-4 mb-2 text-uppercase small text-secondary">
     System
 </li>
+
 <li class="nav-item">
 
     <a class="nav-link text-white d-flex justify-content-between align-items-center"
        data-bs-toggle="collapse"
-       href="#activityLogMenu"
+       href="#systemMenu"
        role="button">
 
         <span>
-            <i class="fas fa-history me-2"></i>
-            Activity Logs
+            <i class="fas fa-shield-alt me-2"></i>
+            System
         </span>
 
         <i class="fas fa-angle-down"></i>
 
     </a>
 
-    <div class="collapse" id="activityLogMenu">
+    <div class="collapse
+        {{ request()->routeIs('activity-logs.*') || request()->routeIs('login-history.*') ? 'show' : '' }}"
+         id="systemMenu">
 
         <ul class="nav flex-column ms-3">
+
+            @can('activity_logs.view')
 
             <li class="nav-item">
 
                 <a href="{{ route('activity-logs.index') }}"
-                   class="nav-link text-light {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}">
+                   class="nav-link text-light {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
 
-                    <i class="fas fa-list me-2"></i>
-                    Activity Log List
+                    <i class="fas fa-history me-2"></i>
+
+                    Activity Logs
 
                 </a>
 
             </li>
+
+            @endcan
+
+
+            @can('login_history.view')
+
+            <li class="nav-item">
+
+                <a href="{{ route('login-history.index') }}"
+                   class="nav-link text-light {{ request()->routeIs('login-history.*') ? 'active' : '' }}">
+
+                    <i class="fas fa-sign-in-alt me-2"></i>
+
+                    Login History
+
+                </a>
+
+            </li>
+
+            @endcan
 
         </ul>
 
@@ -349,7 +377,8 @@
 
 </li>
 
-@endcan
+@endcanany
+
 
         </ul>
 

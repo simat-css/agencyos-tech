@@ -156,13 +156,6 @@
                     </li>
 
                     <li>
-                        <a href="#" class="dropdown-item">
-                            <i class="fas fa-history me-2"></i>
-                            Login History
-                        </a>
-                    </li>
-
-                    <li>
                         <hr class="dropdown-divider">
                     </li>
 

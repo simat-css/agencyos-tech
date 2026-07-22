@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use App\Models\UserSession;
 
 class ProfileController extends Controller
 {
@@ -20,6 +21,20 @@ class ProfileController extends Controller
             'user' => $request->user(),
         ]);
     }
+
+    public function show(): View
+{
+    $user = auth()->user();
+
+    $lastSession = UserSession::where('user_id', $user->id)
+        ->latest('login_at')
+        ->first();
+
+    return view('profile.show', compact(
+        'user',
+        'lastSession'
+    ));
+}
 
     /**
      * Update the user's profile information.
